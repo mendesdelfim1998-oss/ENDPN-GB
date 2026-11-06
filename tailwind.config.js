@@ -1,0 +1,75 @@
+/** @type {import('tailwindcss').Config} */
+export default {
+  content: [
+    "./index.html",
+    "./src/**/*.{js,ts,jsx,tsx}",
+  ],
+  theme: {
+    extend: {
+      colors: {
+        primary: {
+          50: '#eff6ff',
+          100: '#dbeafe',
+          200: '#bfdbfe',
+          300: '#93c5fd',
+          400: '#60a5fa',
+          500: '#3b82f6',
+          600: '#2563eb',
+          700: '#1d4ed8',
+          800: '#1e40af',
+          900: '#1e3a8a',
+          950: '#172554',
+        },
+        accent: {
+          50: '#eaf6f0',
+          100: '#d0eddf',
+          200: '#a2dec2',
+          300: '#69c59e',
+          400: '#3ca97d',
+          500: '#16845b',
+          600: '#116a4a',
+          700: '#0e563d',
+          800: '#0a4330',
+          900: '#073124',
+        },
+        flag: {
+          100: '#f9e2e4',
+          600: '#c0262d',
+          700: '#a51f26',
+          800: '#8a1820',
+          900: '#6b1218',
+        },
+        neutral: {
+          50: '#f6f9f7',
+          100: '#eef2f0',
+          200: '#dde5e1',
+          300: '#bcc8c2',
+          400: '#94a39c',
+          500: '#6b7872',
+          600: '#4a5851',
+          700: '#33403a',
+          800: '#1f2823',
+          900: '#141a17',
+          950: '#0a0f0d',
+        },
+      },
+      fontFamily: {
+        serif: ['Cormorant Garamond', 'Georgia', 'serif'],
+        sans: ['Inter', 'system-ui', 'sans-serif'],
+      },
+      borderRadius: {
+        'sm': '8px',
+        'md': '12px',
+        'lg': '16px',
+        'xl': '22px',
+      },
+      boxShadow: {
+        'sm': '0 1px 2px rgba(10,15,13,.05), 0 1px 3px rgba(10,15,13,.04)',
+        'md': '0 2px 8px rgba(10,15,13,.06), 0 4px 16px rgba(10,15,13,.05)',
+        'lg': '0 8px 28px rgba(10,15,13,.08), 0 4px 16px rgba(10,15,13,.05)',
+        'xl': '0 20px 48px rgba(10,15,13,.12), 0 8px 24px rgba(10,15,13,.06)',
+      },
+    },
+  },
+  plugins: [],
+}
