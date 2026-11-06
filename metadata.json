@@ -1,0 +1,8 @@
+{
+  "name": "EMDPN-GB - Agendamento e Naturalização na Guiné-Bissau",
+  "description": "Portal Oficial do Escritório de Movimentação de Documentos e Processos de Naturalização na Guiné-Bissau. Agendamento online de cidadania, passaportes, BI e certidões.",
+  "capabilities": [
+    "MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"
+  ],
+  "permissions": []
+}
