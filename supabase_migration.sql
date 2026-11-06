@@ -1,24 +1,26 @@
--- Migration: Site Settings Table
--- Run this in your Supabase SQL Editor
+-- Migration for shared site image settings.
+-- Admin writes require a Supabase Auth user with app_metadata.role = 'admin'.
 
-CREATE TABLE IF NOT EXISTS site_settings (
+CREATE TABLE IF NOT EXISTS public.site_settings (
   key TEXT PRIMARY KEY,
   value TEXT NOT NULL,
-  updated_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now())
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT now()
 );
 
--- Enable RLS
-ALTER TABLE site_settings ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.site_settings ENABLE ROW LEVEL SECURITY;
 
--- Allow public read access
-CREATE POLICY "Allow public read site_settings" ON site_settings
-  FOR SELECT USING (true);
+DROP POLICY IF EXISTS "Allow public read site_settings" ON public.site_settings;
+DROP POLICY IF EXISTS "Allow write site_settings" ON public.site_settings;
+DROP POLICY IF EXISTS "Public can read site settings" ON public.site_settings;
+DROP POLICY IF EXISTS "Admins can manage site settings" ON public.site_settings;
 
--- Allow authenticated write access
-CREATE POLICY "Allow write site_settings" ON site_settings
-  FOR ALL USING (auth.role() = 'authenticated');
+CREATE POLICY "Public can read site settings"
+  ON public.site_settings FOR SELECT TO anon, authenticated USING (true);
+CREATE POLICY "Admins can manage site settings"
+  ON public.site_settings FOR ALL TO authenticated
+  USING ((auth.jwt() -> 'app_metadata' ->> 'role') = 'admin')
+  WITH CHECK ((auth.jwt() -> 'app_metadata' ->> 'role') = 'admin');
 
--- Seed initial value for emblem
-INSERT INTO site_settings (key, value)
-VALUES ('emblema_url', '/assets/aistudio/Emblema_Her_ldico_da_Luta_e_Progresso_f5f56753.png')
+INSERT INTO public.site_settings (key, value)
+VALUES ('logo', '/assets/aistudio/Emblema_Her_ldico_da_Luta_e_Progresso_f5f56753.png')
 ON CONFLICT (key) DO NOTHING;

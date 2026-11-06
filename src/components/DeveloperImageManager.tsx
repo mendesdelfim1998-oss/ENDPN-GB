@@ -29,6 +29,7 @@ import {
   addGalleryPhoto, 
   removeGalleryPhoto,
   processImageFile, 
+  syncImagesFromSupabase,
   DEFAULT_IMAGES,
   CustomImagesState 
 } from '../services/imageService';
@@ -59,6 +60,7 @@ export function DeveloperImageManager() {
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [previewDataUrl, setPreviewDataUrl] = useState<string | null>(null);
   const [isProcessing, setIsProcessing] = useState(false);
+  const [isSavingImage, setIsSavingImage] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   // Loading state for simulated or real cache clearing as requested
@@ -91,6 +93,9 @@ export function DeveloperImageManager() {
 
   useEffect(() => {
     calculateStorage();
+    syncImagesFromSupabase()
+      .then(setCustomImages)
+      .catch(err => console.error('Could not sync admin images from Supabase:', err));
     const handleUpdate = () => {
       setCustomImages(getCustomImages());
       setEmailLogs(getSentEmailLogs());
@@ -156,18 +161,19 @@ export function DeveloperImageManager() {
     }
   };
 
-  const handleApplyImage = () => {
+  const handleApplyImage = async () => {
     if (!previewDataUrl) {
       error('Nenhuma imagem selecionada. Escolha uma imagem do seu computador primeiro.');
       return;
     }
 
+    setIsSavingImage(true);
     try {
       if (selectedTarget === 'gallery') {
-        addGalleryPhoto(previewDataUrl);
+        await addGalleryPhoto(previewDataUrl);
         success('Foto adicionada à galeria oficial do portal com sucesso!');
       } else {
-        setCustomImage(selectedTarget, previewDataUrl);
+        await setCustomImage(selectedTarget, previewDataUrl);
         const labels: Record<string, string> = {
           heroBanner: 'Banner Principal da Página Inicial',
           audienceShowcase: 'Segunda Imagem da Página Inicial (A Quem se Destina / Atendimento Consular)',
@@ -182,39 +188,57 @@ export function DeveloperImageManager() {
       calculateStorage();
     } catch (err: any) {
       error(err.message || 'Erro ao salvar imagem.');
+    } finally {
+      setIsSavingImage(false);
     }
   };
 
-  const handleResetSingleImage = (key: 'heroBanner' | 'logo' | 'aboutOffice') => {
-    resetImageToDefault(key);
-    success('Imagem restaurada para o padrão oficial original.');
-    calculateStorage();
-  };
-
-  const handleResetAll = () => {
-    if (confirm('Tem a certeza que deseja restaurar todas as imagens do portal para os padrões de fábrica?')) {
-      resetAllImages();
-      success('Todas as imagens foram restauradas com sucesso.');
+  const handleResetSingleImage = async (key: 'heroBanner' | 'logo' | 'aboutOffice') => {
+    try {
+      await resetImageToDefault(key);
+      success('Imagem restaurada para o padrão oficial original.');
       calculateStorage();
+    } catch (err) {
+      error(err instanceof Error ? err.message : 'Não foi possível restaurar a imagem.');
     }
   };
 
-  const handleDeleteArticle = (id?: string) => {
+  const handleResetAll = async () => {
+    if (confirm('Tem a certeza que deseja restaurar todas as imagens do portal para os padrões de fábrica?')) {
+      try {
+        await resetAllImages();
+        success('Todas as imagens foram restauradas com sucesso.');
+        calculateStorage();
+      } catch (err) {
+        error(err instanceof Error ? err.message : 'Não foi possível restaurar as imagens.');
+      }
+    }
+  };
+
+  const handleDeleteArticle = async (id?: string) => {
     if (!id) return;
     if (confirm('Deseja apagar esta publicação do portal?')) {
-      deleteArticle(id);
-      setArticles(getCustomArticles());
-      success('Publicação apagada com sucesso do portal.');
-      calculateStorage();
+      try {
+        await deleteArticle(id);
+        setArticles(getCustomArticles());
+        success('Publicação apagada com sucesso do portal.');
+        calculateStorage();
+      } catch (err) {
+        error(err instanceof Error ? err.message : 'Não foi possível apagar a publicação.');
+      }
     }
   };
 
-  const handleClearAllArticles = () => {
+  const handleClearAllArticles = async () => {
     if (confirm('Tem a certeza que deseja apagar todas as publicações personalizadas?')) {
-      clearAllArticles();
-      setArticles([]);
-      success('Todas as publicações foram removidas.');
-      calculateStorage();
+      try {
+        await clearAllArticles();
+        setArticles([]);
+        success('Todas as publicações foram removidas.');
+        calculateStorage();
+      } catch (err) {
+        error(err instanceof Error ? err.message : 'Não foi possível remover as publicações.');
+      }
     }
   };
 
@@ -402,10 +426,10 @@ export function DeveloperImageManager() {
             {previewDataUrl && (
               <button
                 onClick={handleApplyImage}
-                disabled={isProcessing}
+                disabled={isProcessing || isSavingImage}
                 className="btn btn-primary w-full py-3.5 text-sm font-bold shadow-md flex items-center justify-center gap-2"
               >
-                <CheckCircle2 size={18} /> Aplicar Imagem no Portal Agora
+                <CheckCircle2 size={18} /> {isSavingImage ? 'A guardar no portal...' : 'Aplicar Imagem no Portal Agora'}
               </button>
             )}
           </div>

@@ -41,6 +41,7 @@ import {
   getCustomArticles, 
   saveArticle, 
   deleteArticle, 
+  syncArticlesFromSupabase,
   ARTICLES_UPDATED_EVENT, 
   ArticleItem 
 } from '../services/articleService';
@@ -66,6 +67,7 @@ export function AdminPage() {
   const [newCategory, setNewCategory] = useState('Institucional');
   const [newExcerpt, setNewExcerpt] = useState('');
   const [newImageUrl, setNewImageUrl] = useState('');
+  const [isPublishing, setIsPublishing] = useState(false);
 
   useEffect(() => {
     if (!authService.isAuthenticated()) {
@@ -73,6 +75,10 @@ export function AdminPage() {
       return;
     }
     loadData();
+    syncArticlesFromSupabase().catch(err => {
+      console.error('Could not sync admin publications from Supabase:', err);
+      error(err.message || 'Não foi possível carregar as publicações.');
+    });
 
     const handleArticlesUpdate = () => {
       setCustomArticles(getCustomArticles());
@@ -103,12 +109,13 @@ export function AdminPage() {
     }
   };
 
-  const handlePublish = (e: React.FormEvent) => {
+  const handlePublish = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!newTitle.trim() || !newExcerpt.trim()) {
       error('Preencha o Título e o Conteúdo do Evento/Publicação.');
       return;
     }
+    setIsPublishing(true);
     const article: ArticleItem = {
       title: newTitle.trim(),
       date: new Date().toLocaleDateString('pt-PT', { day: '2-digit', month: 'short', year: 'numeric' }),
@@ -117,26 +124,42 @@ export function AdminPage() {
       category: newCategory.trim(),
       imageUrl: newImageUrl.trim() || undefined
     };
-    saveArticle(article);
-    setCustomArticles(getCustomArticles());
-    success('Evento / Publicação publicado com sucesso no portal! Agora todos os utilizadores podem ver.');
-    setNewTitle('');
-    setNewExcerpt('');
-    setNewImageUrl('');
-    setShowPublishModal(false);
-  };
-
-  const handleDeleteArticle = (id: string) => {
-    if (confirm('Tem certeza que pretende remover esta publicação do portal?')) {
-      deleteArticle(id);
+    try {
+      await saveArticle(article);
       setCustomArticles(getCustomArticles());
-      success('Publicação removida com sucesso.');
+      success('Publicação guardada no portal e disponível para todos.');
+      setNewTitle('');
+      setNewExcerpt('');
+      setNewImageUrl('');
+      setShowPublishModal(false);
+    } catch (err) {
+      console.error('Could not publish article from admin:', err);
+      error(err instanceof Error ? err.message : 'Não foi possível publicar.');
+    } finally {
+      setIsPublishing(false);
     }
   };
 
-  const handleLogout = () => {
-    authService.logout();
-    navigate('/login');
+  const handleDeleteArticle = async (id: string) => {
+    if (confirm('Tem certeza que pretende remover esta publicação do portal?')) {
+      try {
+        await deleteArticle(id);
+        setCustomArticles(getCustomArticles());
+        success('Publicação removida com sucesso.');
+      } catch (err) {
+        console.error('Could not delete admin article:', err);
+        error(err instanceof Error ? err.message : 'Não foi possível remover a publicação.');
+      }
+    }
+  };
+
+  const handleLogout = async () => {
+    try {
+      await authService.logout();
+      navigate('/login');
+    } catch (err) {
+      error(err instanceof Error ? err.message : 'Não foi possível terminar a sessão.');
+    }
   };
 
   const filteredAppointments = appointments.filter(apt => {
@@ -575,9 +598,10 @@ export function AdminPage() {
                   </button>
                   <button 
                     type="submit"
-                    className="btn btn-primary text-xs uppercase py-2.5 px-6 bg-[#16845B] hover:bg-[#126b48] text-white"
+                    disabled={isPublishing}
+                    className="btn btn-primary text-xs uppercase py-2.5 px-6 bg-[#16845B] hover:bg-[#126b48] text-white disabled:opacity-50"
                   >
-                    Publicar no Portal
+                    {isPublishing ? 'A guardar...' : 'Publicar no Portal'}
                   </button>
                 </div>
               </form>

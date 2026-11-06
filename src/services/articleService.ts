@@ -1,8 +1,6 @@
-// Centralized Service for Managing Official Articles, Events, and Public Announcements
-// Persists publications in Supabase 'articles' table with localStorage cache,
-// synchronizes across all users, and enforces authentication for deletions.
 import { supabase } from '../lib/supabase';
 import { authService } from './authService';
+import { uploadImageToStorage } from './imageService';
 
 export interface ArticleItem {
   id?: string;
@@ -17,7 +15,6 @@ export interface ArticleItem {
 const ARTICLES_STORAGE_KEY = 'emdpn_custom_articles';
 const ARTICLES_UPDATED_EVENT = 'emdpn_articles_updated';
 
-// Initial pre-loaded seed article from Claudio / EMDPN Directorate
 const INITIAL_DEFAULT_ARTICLES: ArticleItem[] = [
   {
     id: 'art-official-001',
@@ -30,6 +27,11 @@ const INITIAL_DEFAULT_ARTICLES: ArticleItem[] = [
   }
 ];
 
+function updateArticleCache(articles: ArticleItem[]): void {
+  localStorage.setItem(ARTICLES_STORAGE_KEY, JSON.stringify(articles));
+  window.dispatchEvent(new CustomEvent(ARTICLES_UPDATED_EVENT, { detail: articles }));
+}
+
 export function getCustomArticles(): ArticleItem[] {
   try {
     const raw = localStorage.getItem(ARTICLES_STORAGE_KEY);
@@ -37,121 +39,98 @@ export function getCustomArticles(): ArticleItem[] {
       localStorage.setItem(ARTICLES_STORAGE_KEY, JSON.stringify(INITIAL_DEFAULT_ARTICLES));
       return INITIAL_DEFAULT_ARTICLES;
     }
-    const parsed = JSON.parse(raw);
-    if (Array.isArray(parsed) && parsed.length === 0) {
-      return [];
-    }
-    return Array.isArray(parsed) ? parsed : [];
+    const parsed: unknown = JSON.parse(raw);
+    return Array.isArray(parsed) ? parsed as ArticleItem[] : INITIAL_DEFAULT_ARTICLES;
   } catch (err) {
     console.error('Error reading custom articles', err);
     return INITIAL_DEFAULT_ARTICLES;
   }
 }
 
-// Fetch articles from Supabase table and sync with local cache
 export async function syncArticlesFromSupabase(): Promise<ArticleItem[]> {
-  try {
-    const { data, error } = await supabase
-      .from('articles')
-      .select('*')
-      .order('created_at', { ascending: false });
+  const { data, error } = await supabase
+    .from('articles')
+    .select('id, title, date, author, excerpt, category, image_url')
+    .order('created_at', { ascending: false });
 
-    if (!error && data && data.length > 0) {
-      const mapped: ArticleItem[] = data.map((row: any) => ({
-        id: row.id,
-        title: row.title,
-        date: row.date,
-        author: row.author,
-        excerpt: row.excerpt,
-        category: row.category,
-        imageUrl: row.image_url || undefined
-      }));
-      localStorage.setItem(ARTICLES_STORAGE_KEY, JSON.stringify(mapped));
-      window.dispatchEvent(new CustomEvent(ARTICLES_UPDATED_EVENT, { detail: mapped }));
-      return mapped;
-    }
-  } catch (err) {
-    console.log('[ArticleService] Supabase fallback to local cache:', err);
+  if (error) {
+    console.error('Could not load articles from Supabase:', error);
+    throw new Error('Não foi possível carregar as publicações. Verifique a configuração do Supabase.');
   }
-  return getCustomArticles();
+
+  const articles: ArticleItem[] = data.map(row => ({
+    id: row.id,
+    title: row.title,
+    date: row.date,
+    author: row.author,
+    excerpt: row.excerpt,
+    category: row.category,
+    imageUrl: row.image_url || undefined
+  }));
+  updateArticleCache(articles);
+  return articles;
 }
 
 export async function saveArticle(article: Omit<ArticleItem, 'id'> & { id?: string }): Promise<ArticleItem> {
-  try {
-    const current = getCustomArticles();
-    const newArticle: ArticleItem = {
-      ...article,
-      id: article.id || `custom-${Date.now()}`
-    };
-    const updated = [newArticle, ...current.filter(a => a.id !== newArticle.id)];
-    localStorage.setItem(ARTICLES_STORAGE_KEY, JSON.stringify(updated));
-    window.dispatchEvent(new CustomEvent(ARTICLES_UPDATED_EVENT, { detail: updated }));
-
-    // Persist to Supabase 'articles' table
-    try {
-      await supabase.from('articles').upsert({
-        id: newArticle.id,
-        title: newArticle.title,
-        date: newArticle.date,
-        author: newArticle.author,
-        excerpt: newArticle.excerpt,
-        category: newArticle.category,
-        image_url: newArticle.imageUrl || null
-      });
-    } catch (e) {
-      console.warn('[ArticleService] Could not persist article to Supabase, cached locally:', e);
-    }
-
-    return newArticle;
-  } catch (err) {
-    console.error('Error saving article', err);
-    throw new Error('Não foi possível salvar a publicação.');
+  if (!authService.isAuthenticated()) {
+    throw new Error('Inicie sessão como administrador para publicar.');
   }
+
+  const savedArticle: ArticleItem = {
+    ...article,
+    id: article.id || `article-${crypto.randomUUID()}`
+  };
+  if (savedArticle.imageUrl?.startsWith('data:image/')) {
+    savedArticle.imageUrl = await uploadImageToStorage(savedArticle.imageUrl);
+  }
+  const { error } = await supabase.from('articles').upsert({
+    id: savedArticle.id,
+    title: savedArticle.title,
+    date: savedArticle.date,
+    author: savedArticle.author,
+    excerpt: savedArticle.excerpt,
+    category: savedArticle.category,
+    image_url: savedArticle.imageUrl || null
+  });
+
+  if (error) {
+    console.error('Could not save article to Supabase:', error);
+    throw new Error('Não foi possível publicar. Verifique o acesso administrativo e a configuração do Supabase.');
+  }
+
+  const updated = [savedArticle, ...getCustomArticles().filter(item => item.id !== savedArticle.id)];
+  updateArticleCache(updated);
+  return savedArticle;
 }
 
-// Strict requirement: ONLY authenticated admin can delete a publication!
 export async function deleteArticle(id: string): Promise<boolean> {
   if (!authService.isAuthenticated()) {
-    console.error('Acesso negado: Somente administrador autenticado pode apagar publicações.');
-    throw new Error('Acesso negado: Somente o administrador autenticado pode apagar publicações.');
+    throw new Error('Acesso negado: somente o administrador autenticado pode apagar publicações.');
   }
 
-  try {
-    const current = getCustomArticles();
-    const updated = current.filter(a => a.id !== id);
-    localStorage.setItem(ARTICLES_STORAGE_KEY, JSON.stringify(updated));
-    window.dispatchEvent(new CustomEvent(ARTICLES_UPDATED_EVENT, { detail: updated }));
-
-    // Delete from Supabase 'articles' table
-    try {
-      await supabase.from('articles').delete().eq('id', id);
-    } catch (e) {
-      console.warn('[ArticleService] Could not delete article from Supabase:', e);
-    }
-    return true;
-  } catch (err) {
-    console.error('Error deleting article', err);
-    return false;
+  const { error } = await supabase.from('articles').delete().eq('id', id);
+  if (error) {
+    console.error('Could not delete article from Supabase:', error);
+    throw new Error('Não foi possível remover a publicação. Verifique o acesso administrativo.');
   }
+
+  updateArticleCache(getCustomArticles().filter(article => article.id !== id));
+  return true;
 }
 
 export async function clearAllArticles(): Promise<boolean> {
   if (!authService.isAuthenticated()) {
-    throw new Error('Acesso negado: Somente o administrador autenticado pode limpar publicações.');
+    throw new Error('Acesso negado: somente o administrador autenticado pode limpar publicações.');
   }
 
-  try {
-    localStorage.setItem(ARTICLES_STORAGE_KEY, JSON.stringify([]));
-    window.dispatchEvent(new CustomEvent(ARTICLES_UPDATED_EVENT, { detail: [] }));
-
-    try {
-      await supabase.from('articles').delete().neq('id', '');
-    } catch {}
-    return true;
-  } catch (err) {
-    console.error('Error clearing all articles', err);
-    return false;
+  const { error } = await supabase.from('articles').delete().neq('id', '');
+  if (error) {
+    console.error('Could not clear articles from Supabase:', error);
+    throw new Error('Não foi possível remover as publicações. Verifique o acesso administrativo.');
   }
+
+  updateArticleCache([]);
+  return true;
 }
 
 export { ARTICLES_UPDATED_EVENT };

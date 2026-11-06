@@ -9,6 +9,7 @@ import {
   getCustomArticles, 
   saveArticle, 
   deleteArticle, 
+  syncArticlesFromSupabase,
   ARTICLES_UPDATED_EVENT, 
   ArticleItem 
 } from '../services/articleService';
@@ -25,8 +26,13 @@ export function News() {
   const [newCategory, setNewCategory] = useState('Institucional');
   const [newExcerpt, setNewExcerpt] = useState('');
   const [newImageUrl, setNewImageUrl] = useState('');
+  const [isPublishing, setIsPublishing] = useState(false);
 
   useEffect(() => {
+    syncArticlesFromSupabase().catch(err => {
+      console.error('Could not sync news from Supabase:', err);
+      error(err.message || 'Não foi possível carregar as publicações.');
+    });
     const handleUpdate = () => {
       setCustomArticles(getCustomArticles());
     };
@@ -38,12 +44,13 @@ export function News() {
     };
   }, []);
 
-  const handlePublish = (e: React.FormEvent) => {
+  const handlePublish = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!newTitle.trim() || !newExcerpt.trim()) {
       error('Preencha o Título e o Conteúdo do Evento/Publicação.');
       return;
     }
+    setIsPublishing(true);
     const article: ArticleItem = {
       title: newTitle.trim(),
       date: new Date().toLocaleDateString('pt-PT', { day: '2-digit', month: 'short', year: 'numeric' }),
@@ -52,13 +59,20 @@ export function News() {
       category: newCategory.trim(),
       imageUrl: newImageUrl.trim() || undefined
     };
-    saveArticle(article);
-    setCustomArticles(getCustomArticles());
-    success('Evento / Publicação publicado com sucesso no portal! Agora todos os utilizadores podem ver.');
-    setNewTitle('');
-    setNewExcerpt('');
-    setNewImageUrl('');
-    setShowPublishModal(false);
+    try {
+      await saveArticle(article);
+      setCustomArticles(getCustomArticles());
+      success('Publicação guardada no portal e disponível para todos.');
+      setNewTitle('');
+      setNewExcerpt('');
+      setNewImageUrl('');
+      setShowPublishModal(false);
+    } catch (err) {
+      console.error('Could not publish news:', err);
+      error(err instanceof Error ? err.message : 'Não foi possível publicar.');
+    } finally {
+      setIsPublishing(false);
+    }
   };
 
   const handleDelete = async (id: string) => {
@@ -352,9 +366,10 @@ export function News() {
                     </button>
                     <button 
                       type="submit"
-                      className="btn btn-primary text-xs uppercase py-2.5 px-6"
+                      disabled={isPublishing}
+                      className="btn btn-primary text-xs uppercase py-2.5 px-6 disabled:opacity-50"
                     >
-                      Publicar no Portal
+                      {isPublishing ? 'A guardar...' : 'Publicar no Portal'}
                     </button>
                   </div>
                 </form>

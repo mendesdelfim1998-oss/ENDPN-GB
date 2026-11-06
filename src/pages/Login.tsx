@@ -2,8 +2,8 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { PageHeader } from '../components/PageHeader';
 import { Reveal } from '../components/Reveal';
-import { Mail, Lock, LogIn, ShieldCheck, KeyRound, Sparkles, CheckCircle2, ArrowRight } from 'lucide-react';
-import { authService, TEST_CREDENTIALS } from '../services/authService';
+import { Mail, Lock, LogIn, ShieldCheck, CheckCircle2 } from 'lucide-react';
+import { authService } from '../services/authService';
 
 export function Login() {
   const navigate = useNavigate();
@@ -11,6 +11,7 @@ export function Login() {
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
   const [success, setSuccess] = useState(false);
+  const [isLoading, setIsLoading] = useState(false);
 
   useEffect(() => {
     if (authService.isAuthenticated()) {
@@ -18,25 +19,24 @@ export function Login() {
     }
   }, [navigate]);
 
-  const handleLogin = (e: React.FormEvent) => {
+  const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     setError('');
-
-    const res = authService.login(email, password);
-    if (res.success) {
-      setSuccess(true);
-      setTimeout(() => {
-        navigate('/admin');
-      }, 500);
-    } else {
-      setError(res.error || 'Credenciais inválidas.');
+    setIsLoading(true);
+    try {
+      const result = await authService.login(email, password);
+      if (result.success) {
+        setSuccess(true);
+        setTimeout(() => navigate('/admin'), 500);
+      } else {
+        setError(result.error || 'Credenciais inválidas.');
+      }
+    } catch (loginError) {
+      console.error('Administrator sign-in failed:', loginError);
+      setError('Não foi possível iniciar sessão. Verifique a ligação ao Supabase e tente novamente.');
+    } finally {
+      setIsLoading(false);
     }
-  };
-
-  const handleFillTestCredentials = () => {
-    setEmail(TEST_CREDENTIALS.email);
-    setPassword(TEST_CREDENTIALS.password);
-    setError('');
   };
 
   return (
@@ -84,7 +84,7 @@ export function Login() {
                       value={email}
                       onChange={e => setEmail(e.target.value)}
                       className="w-full py-3.5 outline-none bg-transparent text-sm font-medium"
-                      placeholder="admin@emdpn.gw"
+                      placeholder="E-mail registado no sistema"
                       required 
                     />
                   </div>
@@ -108,35 +108,16 @@ export function Login() {
                 </div>
 
                 <button 
-                  type="submit" 
+                  type="submit"
+                  disabled={isLoading}
                   className="btn btn-institutional w-full justify-center py-3.5 text-sm rounded-xl shadow-md mt-2"
                 >
-                  <LogIn size={18} /> Entrar no Painel de Agendamentos
+                  <LogIn size={18} /> {isLoading ? 'A validar...' : 'Entrar no Painel de Agendamentos'}
                 </button>
               </form>
 
-              {/* Solicitado pelo Claudio: Credenciais de teste visíveis embaixo para testar */}
-              <div className="mt-8 pt-6 border-t border-neutral-200 text-left bg-neutral-50 -mx-8 -mb-8 p-6 rounded-b-2xl border-t">
-                <div className="flex items-center justify-between gap-2 mb-2">
-                  <span className="text-xs font-bold text-primary-950 flex items-center gap-1.5">
-                    <KeyRound size={14} className="text-accent-600" />
-                    Credenciais de Teste (Administração):
-                  </span>
-                  <button
-                    type="button"
-                    onClick={handleFillTestCredentials}
-                    className="text-[11px] font-bold text-primary-700 bg-primary-100 hover:bg-primary-200 px-2 py-0.5 rounded transition-colors flex items-center gap-1"
-                  >
-                    <Sparkles size={11} /> Preencher
-                  </button>
-                </div>
-                <div className="space-y-1 font-mono text-xs text-neutral-600 bg-white p-3 rounded-lg border border-neutral-200">
-                  <div><strong>E-mail:</strong> admin@emdpn.gw</div>
-                  <div><strong>Palavra-passe:</strong> admin</div>
-                </div>
-                <span className="text-[11px] text-neutral-400 block mt-2 leading-tight">
-                  * Pode clicar em "Preencher" e depois em "Entrar no Painel" para testar a gestão dos agendamentos.
-                </span>
+              <div className="mt-8 pt-5 border-t border-neutral-200 text-xs text-neutral-500">
+                Use uma conta criada no Supabase Auth com a função administrativa ativa.
               </div>
             </div>
           </Reveal>

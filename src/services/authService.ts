@@ -1,4 +1,6 @@
-const AUTH_KEY = 'emdpn_admin_session';
+import { supabase } from '../lib/supabase';
+
+const AUTH_KEY = 'emdpn_verified_admin';
 
 export interface AdminUser {
   email: string;
@@ -6,45 +8,51 @@ export interface AdminUser {
   role: string;
 }
 
-export const TEST_CREDENTIALS = {
-  email: 'admin@emdpn.gw',
-  password: 'admin'
-};
-
 export const authService = {
-  login(email: string, pass: string): { success: boolean; error?: string } {
-    const cleanEmail = email.trim().toLowerCase();
-    const cleanPass = pass.trim();
+  async login(email: string, password: string): Promise<{ success: boolean; error?: string }> {
+    localStorage.removeItem(AUTH_KEY);
+    const { data, error } = await supabase.auth.signInWithPassword({
+      email: email.trim(),
+      password
+    });
 
-    if (
-      (cleanEmail === 'admin@emdpn.gw' && (cleanPass === 'admin' || cleanPass === 'admin123' || cleanPass === 'emdpn2026')) ||
-      (cleanEmail === 'mendesdelfim1998@gmail.com') ||
-      (cleanEmail.includes('admin') && cleanPass.length >= 4)
-    ) {
-      const user: AdminUser = {
-        email: cleanEmail,
-        name: 'Administrador EMDPN-GB',
-        role: 'Oficial de Registo e Agendamentos'
-      };
-      localStorage.setItem(AUTH_KEY, JSON.stringify(user));
-      return { success: true };
+    if (error || !data.user) {
+      return { success: false, error: 'E-mail ou palavra-passe incorretos.' };
     }
 
-    return {
-      success: false,
-      error: 'E-mail ou palavra-passe incorretos. Utilize as credenciais de teste indicadas abaixo.'
+    if (data.user.app_metadata.role !== 'admin') {
+      await supabase.auth.signOut();
+      return {
+        success: false,
+        error: 'Esta conta não tem permissões de administrador. Contacte o responsável pelo Supabase.'
+      };
+    }
+
+    const user: AdminUser = {
+      email: data.user.email || email.trim(),
+      name: data.user.user_metadata.name || 'Administrador EMDPN-GB',
+      role: 'admin'
     };
+    localStorage.setItem(AUTH_KEY, JSON.stringify(user));
+    return { success: true };
   },
 
-  logout(): void {
+  async logout(): Promise<void> {
     localStorage.removeItem(AUTH_KEY);
+    const { error } = await supabase.auth.signOut();
+    if (error) {
+      console.error('Could not sign out from Supabase:', error);
+      throw new Error('Não foi possível terminar a sessão. Tente novamente.');
+    }
   },
 
   getCurrentUser(): AdminUser | null {
     try {
       const raw = localStorage.getItem(AUTH_KEY);
-      return raw ? JSON.parse(raw) : null;
-    } catch {
+      const user: AdminUser | null = raw ? JSON.parse(raw) : null;
+      return user?.role === 'admin' ? user : null;
+    } catch (error) {
+      console.error('Could not read administrator session:', error);
       return null;
     }
   },
