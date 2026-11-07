@@ -30,7 +30,7 @@ Deno.serve(async request => {
   const serviceRoleKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY');
   if (!supabaseUrl || !anonKey || !serviceRoleKey) {
     console.error('Missing Supabase environment variables for admin-users function.');
-    return respond(500, { error: 'Administrator account service is not configured.' });
+    return respond(500, { error: 'The administrator account service is not configured.' });
   }
 
   const userClient = createClient(supabaseUrl, anonKey, {

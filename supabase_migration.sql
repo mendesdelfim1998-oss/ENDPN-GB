@@ -36,6 +36,17 @@ CREATE TABLE IF NOT EXISTS public.articles (
   image_url TEXT,
   created_at TIMESTAMPTZ NOT NULL DEFAULT now()
 );
+ALTER TABLE public.articles ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS "Allow public read articles" ON public.articles;
+DROP POLICY IF EXISTS "Allow write articles" ON public.articles;
+DROP POLICY IF EXISTS "Public can read articles" ON public.articles;
+DROP POLICY IF EXISTS "Admins can manage articles" ON public.articles;
+CREATE POLICY "Public can read articles"
+  ON public.articles FOR SELECT TO anon, authenticated USING (true);
+CREATE POLICY "Admins can manage articles"
+  ON public.articles FOR ALL TO authenticated
+  USING ((auth.jwt() -> 'app_metadata' ->> 'role') = 'admin')
+  WITH CHECK ((auth.jwt() -> 'app_metadata' ->> 'role') = 'admin');
 
 CREATE TABLE IF NOT EXISTS public.site_visitors (
   visitor_id UUID PRIMARY KEY,

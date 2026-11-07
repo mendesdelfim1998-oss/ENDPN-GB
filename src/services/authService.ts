@@ -73,7 +73,7 @@ export const authService = {
       throw new Error('Inicie sessão como administrador para criar contas.');
     }
 
-    const { error } = await supabase.functions.invoke('admin-users', {
+    const { error } = await supabase.functions.invoke('clever-function', {
       body: { email: email.trim(), password }
     });
     if (error) {

@@ -49,10 +49,10 @@ Se o site usar outro projeto Supabase, configure `VITE_SUPABASE_URL` e `VITE_SUP
 
 Para atualizar um projeto Supabase já configurado, execute `supabase_migration.sql` no SQL Editor. O script acrescenta o contador global, que regista identificadores aleatórios persistentes por navegador (visitantes únicos por navegador, não pessoas identificadas), e os pontos de restauro das publicações e definições de imagem. Os dados de agendamento e dos requerentes não são incluídos nos restauros.
 
-Depois, publique a Edge Function que cria contas administrativas:
+Depois, publique a Edge Function `clever-function` que cria contas administrativas:
 
 ```bash
-supabase functions deploy admin-users
+supabase functions deploy clever-function
 ```
 
 A função usa os segredos `SUPABASE_URL`, `SUPABASE_ANON_KEY` e `SUPABASE_SERVICE_ROLE_KEY` do ambiente Supabase; nunca os configure no frontend. Crie inicialmente uma conta no Supabase Auth e atribua-lhe `app_metadata.role = 'admin'` usando o procedimento acima. A partir da área autenticada do administrador, pode criar outras contas (incluindo `admin@emdpn.gw`) e alterar a própria palavra-passe. Cada conta deve ter uma palavra-passe individual com pelo menos 12 caracteres, maiúscula, minúscula, número e símbolo; não existe uma palavra-passe partilhada predefinida.
