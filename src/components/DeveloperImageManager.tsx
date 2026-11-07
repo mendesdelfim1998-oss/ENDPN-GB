@@ -205,6 +205,7 @@ export function DeveloperImageManager() {
     setIsManagingAccount(true);
     try {
       await authService.createAdminAccount(adminEmail, adminPassword);
+      setAdminEmail('');
       setAdminPassword('');
       setAdminPasswordConfirm('');
       success('Conta de administrador criada. A pessoa já pode iniciar sessão.');
