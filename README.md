@@ -44,3 +44,17 @@ Publicações e imagens do painel são guardadas no Supabase, para que todos os 
 O script configura leitura pública das publicações e imagens e permite alterações apenas a contas autenticadas com `app_metadata.role = 'admin'`. As imagens carregadas são guardadas no bucket público `site-images` (máximo de 5 MB). Nunca coloque uma chave `service_role` ou `SUPABASE_SECRET_KEY` no frontend ou nas variáveis `VITE_*`.
 
 Se o site usar outro projeto Supabase, configure `VITE_SUPABASE_URL` e `VITE_SUPABASE_ANON_KEY` nas variáveis de ambiente da Vercel e publique novamente.
+
+### Contador de visitantes, contas e pontos de restauro
+
+Para atualizar um projeto Supabase já configurado, execute `supabase_migration.sql` no SQL Editor. O script acrescenta o contador global, que regista identificadores aleatórios persistentes por navegador (visitantes únicos por navegador, não pessoas identificadas), e os pontos de restauro das publicações e definições de imagem. Os dados de agendamento e dos requerentes não são incluídos nos restauros.
+
+Depois, publique a Edge Function que cria contas administrativas:
+
+```bash
+supabase functions deploy admin-users
+```
+
+A função usa os segredos `SUPABASE_URL`, `SUPABASE_ANON_KEY` e `SUPABASE_SERVICE_ROLE_KEY` do ambiente Supabase; nunca os configure no frontend. Crie inicialmente uma conta no Supabase Auth e atribua-lhe `app_metadata.role = 'admin'` usando o procedimento acima. A partir da área autenticada do administrador, pode criar outras contas (incluindo `admin@emdpn.gw`) e alterar a própria palavra-passe. Cada conta deve ter uma palavra-passe individual com pelo menos 12 caracteres, maiúscula, minúscula, número e símbolo; não existe uma palavra-passe partilhada predefinida.
+
+O contador global pode ser reiniciado no painel administrativo. As publicações e imagens são copiadas automaticamente antes de cada alteração, e os pontos de restauro também podem ser criados ou restaurados no painel.

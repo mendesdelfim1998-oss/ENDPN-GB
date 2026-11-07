@@ -16,12 +16,11 @@ import {
   ChevronRight,
   Award,
   ArrowRight,
-  Heart,
-  Plane
+  Heart
 } from 'lucide-react';
 import { Reveal } from '../components/Reveal';
 import { Gallery } from '../components/Gallery';
-import { getStatsMetrics, incrementVisitorCount } from '../services/appointmentService';
+import { getStatsMetrics, recordSiteVisitor } from '../services/appointmentService';
 import { useLanguage } from '../context/LanguageContext';
 import { getCustomImages, DEFAULT_IMAGES, syncImagesFromSupabase } from '../services/imageService';
 import { authService } from '../services/authService';
@@ -33,8 +32,10 @@ export function Home() {
   const isAuthenticated = authService.isAuthenticated();
 
   useEffect(() => {
-    incrementVisitorCount();
     setStats(getStatsMetrics());
+    recordSiteVisitor()
+      .then(visitors => setStats(current => ({ ...current, visitors })))
+      .catch(err => console.error('Could not update global visitor count:', err));
     syncImagesFromSupabase().then(imgs => setCustomImages(imgs));
 
     const handleImagesUpdate = () => {
@@ -431,24 +432,12 @@ export function Home() {
                   <CheckCircle2 size={16} className="text-primary-700 shrink-0" />
                   <span>
                     {language === 'fr'
-                      ? 'Comprend la modalité de Rendez-vous Voyage Urgent et Visas consulaires'
+                      ? 'Rendez-vous en personne ou consultation par visioconférence'
                       : language === 'en'
-                      ? 'Includes Urgent Travel & Embassy Visa priority booking'
+                      ? 'Appointments in person or by video consultation'
                       : language === 'es'
-                      ? 'Incluye modalidad de Cita por Viaje Urgente y Visado consular'
-                      : 'Inclui modalidade de Agendamento de pedido de visto por consulta urgente'}
-                  </span>
-                </div>
-                <div className="flex items-center gap-2">
-                  <CheckCircle2 size={16} className="text-primary-700 shrink-0" />
-                  <span>
-                    {language === 'fr'
-                      ? 'Pour passagers avec vol programmé ou billet émis'
-                      : language === 'en'
-                      ? 'For passengers with issued flight tickets or urgent travel'
-                      : language === 'es'
-                      ? 'Para pasajeros con billete emitido o viaje inminente'
-                      : 'Passageiros com bilhete emitido ou viagem marcada'}
+                      ? 'Atención presencial o consulta por videoconferencia'
+                      : 'Atendimento presencial ou consulta por videoconferência'}
                   </span>
                 </div>
                 <div className="flex items-center gap-2">
@@ -547,94 +536,6 @@ export function Home() {
             </Link>
           </div>
 
-        </div>
-
-        {/* VISA APPOINTMENT & DOCUMENTARY ADVISORY CARD REQUESTED BY USER */}
-        <div className="mt-8 max-w-4xl mx-auto">
-          <div className="bg-gradient-to-r from-primary-950 via-primary-900 to-primary-950 text-white rounded-2xl p-6 sm:p-8 shadow-xl border border-primary-800">
-            <div className="flex flex-col md:flex-row md:items-start justify-between gap-6">
-              <div className="space-y-4">
-                <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-accent-500/20 border border-accent-400/40 text-accent-300 text-xs font-bold uppercase tracking-wider">
-                  <Plane size={14} className="text-accent-400" />
-                  <span>Pedido de Agendamento de Pedido de Visto</span>
-                </div>
-
-                <h3 className="text-xl sm:text-2xl font-serif font-bold text-white">
-                  Assessoria e Orientação Documental para Vistos Internacionais
-                </h3>
-
-                <p className="text-sm text-neutral-200 leading-relaxed max-w-2xl">
-                  Disponibilizamos serviços de assessoria e orientação documental para diferentes categorias de vistos, de acordo com os requisitos aplicáveis.
-                </p>
-
-                <div className="bg-white/10 backdrop-blur-md rounded-xl p-4 sm:p-5 border border-white/15 space-y-3">
-                  <span className="font-bold text-accent-300 text-sm block">
-                    ✈️ Áreas de atendimento:
-                  </span>
-                  <div className="grid sm:grid-cols-2 gap-2 text-xs text-neutral-100">
-                    <div className="flex items-center gap-1.5">
-                      <span>📌</span>
-                      <span>Vistos de turismo e Schengen;</span>
-                    </div>
-                    <div className="flex items-center gap-1.5">
-                      <span>📌</span>
-                      <span>Vistos de estudo;</span>
-                    </div>
-                    <div className="flex items-center gap-1.5">
-                      <span>📌</span>
-                      <span>Vistos de trabalho;</span>
-                    </div>
-                    <div className="flex items-center gap-1.5">
-                      <span>📌</span>
-                      <span>Vistos de residência;</span>
-                    </div>
-                    <div className="flex items-center gap-1.5">
-                      <span>📌</span>
-                      <span>Reagrupamento familiar;</span>
-                    </div>
-                    <div className="flex items-center gap-1.5">
-                      <span>📌</span>
-                      <span>Outras categorias de vistos elegíveis</span>
-                    </div>
-                  </div>
-                </div>
-
-                <div className="space-y-1.5 text-xs text-neutral-300">
-                  <div className="flex items-start gap-2">
-                    <span>📄</span>
-                    <span>Informações sobre documentação, requisitos e procedimentos de candidatura.</span>
-                  </div>
-                  <div className="flex items-start gap-2">
-                    <span>🌍</span>
-                    <span>Atendimento mediante consulta e análise dos requisitos aplicáveis a cada processo.</span>
-                  </div>
-                </div>
-              </div>
-
-              <div className="shrink-0 flex flex-col gap-3 min-w-[240px]">
-                <Link
-                  to="/agendamento?service=agendamento_viagem"
-                  className="w-full inline-flex items-center justify-center gap-2 py-3.5 px-5 bg-accent-500 hover:bg-accent-400 text-neutral-950 rounded-xl font-bold text-xs uppercase tracking-wider transition-all shadow-lg"
-                >
-                  <Calendar size={16} />
-                  <span>Agendar Pedido de Visto</span>
-                </Link>
-
-                <a
-                  href="https://wa.me/245957000555?text=Ol%C3%A1%21%20Gostaria%20de%20informa%C3%A7%C3%B5es%20e%20orienta%C3%A7%C3%A3o%20documental%20sobre%20o%20Agendamento%20de%20Pedido%20de%20Visto."
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="w-full inline-flex items-center justify-center gap-2 py-3 px-4 bg-emerald-600 hover:bg-emerald-500 text-white rounded-xl font-bold text-xs uppercase tracking-wider transition-all shadow-md"
-                >
-                  <span>📩 Enviar Mensagem (+245)</span>
-                </a>
-
-                <span className="text-[10px] text-center text-neutral-400">
-                  Gabinete Safim / Bissau
-                </span>
-              </div>
-            </div>
-          </div>
         </div>
 
       </section>

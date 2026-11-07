@@ -1,3 +1,6 @@
+import { supabase } from '../lib/supabase';
+import { authService } from './authService';
+
 export interface Appointment {
   id: string;
   protocolNumber: string;
@@ -145,14 +148,6 @@ export function getLocalizedOfficialServices(t?: any) {
   const s = t.appointments.services;
   return [
     {
-      id: 'agendamento_viagem',
-      name: s.travel.name,
-      fee: s.travel.fee,
-      desc: s.travel.desc,
-      timeEstimate: s.travel.estimate,
-      category: s.travel.category
-    },
-    {
       id: 'naturalizacao_residencia',
       name: s.naturalization.name,
       fee: s.naturalization.fee,
@@ -220,17 +215,10 @@ export function getLocalizedOfficialServices(t?: any) {
 }
 
 const STORAGE_KEY = 'emdpn_appointments';
-const VISITOR_KEY = 'emdpn_visitor_count';
+const VISITOR_ID_KEY = 'emdpn_visitor_id';
+const VISITOR_COUNT_KEY = 'emdpn_visitor_count';
 
 export const OFFICIAL_SERVICES = [
-  {
-    id: 'agendamento_viagem',
-    name: 'Agendamento por Viagem (Urgência & Voo)',
-    fee: 'Taxa Notarial de Urgência',
-    desc: 'Atendimento prioritário de emergência para passageiros com viagem marcada, voos próximos, obtenção ou renovação expressa de passaportes e vistos.',
-    timeEstimate: 'Atendimento prioritário imediato (24h a 48h)',
-    category: 'Viagem & Urgência'
-  },
   {
     id: 'naturalizacao_residencia',
     name: 'Aquisição de Nacionalidade por Naturalização',
@@ -378,7 +366,7 @@ const INITIAL_SEED_APPOINTMENTS: Appointment[] = [
     documentNumber: 'BI-GB-129033',
     countryOfResidence: 'Guiné-Bissau',
     preferredChannel: 'Presencial',
-    notes: 'Urgência para viagem de estudos em Portugal.',
+    notes: 'Aguardar verificação da documentação.',
     status: 'pendente',
     createdAt: '2026-10-24 11:00'
   }
@@ -443,17 +431,11 @@ export function deleteAppointment(id: string): void {
 }
 
 export function getStatsMetrics() {
-  let visitors = 1840;
+  let visitors = 0;
   try {
-    const storedVisitors = localStorage.getItem(VISITOR_KEY);
-    if (!storedVisitors) {
-      localStorage.setItem(VISITOR_KEY, '1840');
-    } else {
-      visitors = parseInt(storedVisitors, 10);
-      if (isNaN(visitors)) visitors = 1840;
-    }
-  } catch {
-    visitors = 1840;
+    visitors = Number(localStorage.getItem(VISITOR_COUNT_KEY)) || 0;
+  } catch (err) {
+    console.error('Could not read cached visitor count:', err);
   }
 
   const appointments = getAppointments();
@@ -468,13 +450,49 @@ export function getStatsMetrics() {
   };
 }
 
-export function incrementVisitorCount(): number {
-  try {
-    const storedVisitors = localStorage.getItem(VISITOR_KEY);
-    const count = storedVisitors ? parseInt(storedVisitors, 10) + 1 : 1841;
-    localStorage.setItem(VISITOR_KEY, String(count));
-    return count;
-  } catch {
-    return 1841;
+function getOrCreateVisitorId(): string {
+  let visitorId = localStorage.getItem(VISITOR_ID_KEY);
+  if (!visitorId) {
+    visitorId = crypto.randomUUID();
+    localStorage.setItem(VISITOR_ID_KEY, visitorId);
   }
+  return visitorId;
+}
+
+export async function recordSiteVisitor(): Promise<number> {
+  const { data, error } = await supabase.rpc('record_site_visit', {
+    p_visitor_id: getOrCreateVisitorId()
+  });
+  if (error) {
+    console.error('Could not register site visitor:', error);
+    throw new Error('Não foi possível carregar o contador global de visitantes.');
+  }
+  const count = Number(data);
+  localStorage.setItem(VISITOR_COUNT_KEY, String(count));
+  return count;
+}
+
+export async function getSiteVisitorCount(): Promise<number> {
+  const { data, error } = await supabase.rpc('get_site_visitor_count');
+  if (error) {
+    console.error('Could not read global visitor count:', error);
+    throw new Error('Não foi possível carregar o contador global de visitantes.');
+  }
+  const count = Number(data);
+  localStorage.setItem(VISITOR_COUNT_KEY, String(count));
+  return count;
+}
+
+export async function resetSiteVisitorCount(): Promise<number> {
+  if (!authService.isAuthenticated()) {
+    throw new Error('Inicie sessão como administrador para reiniciar o contador.');
+  }
+  const { data, error } = await supabase.rpc('reset_site_visitors');
+  if (error) {
+    console.error('Could not reset global visitor count:', error);
+    throw new Error('Não foi possível reiniciar o contador. Confirme as permissões administrativas.');
+  }
+  const count = Number(data);
+  localStorage.setItem(VISITOR_COUNT_KEY, String(count));
+  return count;
 }

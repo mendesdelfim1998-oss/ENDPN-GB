@@ -132,7 +132,6 @@ export function Contact() {
                       onChange={e => setFormData({...formData, assunto: e.target.value})}
                       className="w-full px-4 py-3 border border-neutral-300 rounded-lg focus:border-primary-600 focus:ring-2 focus:ring-primary-100 outline-none transition-all text-sm bg-white"
                     >
-                      <option value="Agendamento por Viagem">{language === 'fr' ? 'Rendez-vous pour Voyage (Urgence)' : language === 'en' ? 'Travel Emergency Booking' : language === 'es' ? 'Cita por Viaje (Urgencia)' : 'Agendamento por Viagem (Urgência & Voo)'}</option>
                       <option value="Processo de Naturalização">{language === 'fr' ? 'Naturalisation & Citoyenneté' : language === 'en' ? 'Naturalization & Citizenship' : language === 'es' ? 'Naturalización y Ciudadanía' : 'Processo de Naturalização (Nacionalidade)'}</option>
                       <option value="Aquisição por Casamento">{language === 'fr' ? 'Nationalité par Mariage' : language === 'en' ? 'Nationality by Marriage' : language === 'es' ? 'Nacionalidad por Matrimonio' : 'Aquisição de Nacionalidade por Casamento'}</option>
                       <option value="Diáspora e Década do Retorno">{language === 'fr' ? 'Diaspora & Retour aux Origines' : language === 'en' ? 'Diaspora & Return Movement' : language === 'es' ? 'Diáspora y Retorno Ancestral' : 'Diáspora Guineense e Década do Retorno'}</option>

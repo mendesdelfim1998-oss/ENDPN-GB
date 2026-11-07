@@ -1,3 +1,4 @@
+import { FunctionsHttpError } from '@supabase/supabase-js';
 import { supabase } from '../lib/supabase';
 
 const AUTH_KEY = 'emdpn_verified_admin';
@@ -43,6 +44,53 @@ export const authService = {
     if (error) {
       console.error('Could not sign out from Supabase:', error);
       throw new Error('Não foi possível terminar a sessão. Tente novamente.');
+    }
+  },
+
+  async changePassword(currentPassword: string, newPassword: string): Promise<void> {
+    const user = this.getCurrentUser();
+    if (!user) {
+      throw new Error('Inicie sessão como administrador para alterar a palavra-passe.');
+    }
+
+    const { error: signInError } = await supabase.auth.signInWithPassword({
+      email: user.email,
+      password: currentPassword
+    });
+    if (signInError) {
+      throw new Error('A palavra-passe atual está incorreta.');
+    }
+
+    const { error } = await supabase.auth.updateUser({ password: newPassword });
+    if (error) {
+      console.error('Could not update administrator password:', error);
+      throw new Error('Não foi possível alterar a palavra-passe.');
+    }
+  },
+
+  async createAdminAccount(email: string, password: string): Promise<void> {
+    if (!this.isAuthenticated()) {
+      throw new Error('Inicie sessão como administrador para criar contas.');
+    }
+
+    const { error } = await supabase.functions.invoke('admin-users', {
+      body: { email: email.trim(), password }
+    });
+    if (error) {
+      let message = error.message;
+      if (error instanceof FunctionsHttpError && error.context instanceof Response) {
+        const responseBody: unknown = await error.context.clone().json().catch(() => null);
+        if (
+          responseBody &&
+          typeof responseBody === 'object' &&
+          'error' in responseBody &&
+          typeof responseBody.error === 'string'
+        ) {
+          message = responseBody.error;
+        }
+      }
+      console.error('Could not create administrator account:', error);
+      throw new Error(message || 'Não foi possível criar a conta de administrador.');
     }
   },
 

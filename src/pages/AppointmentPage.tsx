@@ -68,23 +68,6 @@ export function AppointmentPage() {
         {/* Tab 1: New Booking */}
         {activeTab === 'novo' && (
           <div>
-            {/* Quick Visa Advisory Banner */}
-            <div className="mb-6 bg-gradient-to-r from-primary-950 via-primary-900 to-primary-950 text-white p-5 rounded-2xl border border-primary-800 shadow-md flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-              <div>
-                <span className="text-accent-400 text-xs font-bold uppercase tracking-wider block">Assessoria Especializada</span>
-                <h4 className="text-base font-serif font-bold text-white">Pedido de Agendamento de Pedido de Visto & Viagem Urgente</h4>
-                <p className="text-xs text-neutral-300 mt-0.5">
-                  Turismo/Schengen, Estudo, Trabalho, Residência e Reagrupamento familiar.
-                </p>
-              </div>
-              <button
-                onClick={() => setPreselectedService('agendamento_viagem')}
-                className="px-4 py-2.5 bg-accent-500 hover:bg-accent-400 text-neutral-950 font-bold text-xs uppercase rounded-xl transition-all shadow whitespace-nowrap self-start sm:self-auto"
-              >
-                Selecionar Vistos & Viagem
-              </button>
-            </div>
-
             <AppointmentBookingModal 
               initialServiceId={preselectedService}
               onSuccess={(createdApt) => {

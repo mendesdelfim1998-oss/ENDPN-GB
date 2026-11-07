@@ -45,7 +45,11 @@ export function AppointmentBookingModal({ initialServiceId, onSuccess }: Props) 
   const universalCountries = getLocalizedUniversalCountries(language);
 
   const [step, setStep] = useState(1);
-  const [selectedServiceIds, setSelectedServiceIds] = useState<string[]>(initialServiceId ? [initialServiceId] : [servicesList[0].id]);
+  const [selectedServiceIds, setSelectedServiceIds] = useState<string[]>([
+    initialServiceId && servicesList.some(service => service.id === initialServiceId)
+      ? initialServiceId
+      : servicesList[0].id
+  ]);
   const [modality, setModality] = useState<'presencial' | 'online'>('presencial');
   
   // Tomorrow as min date
@@ -342,28 +346,6 @@ EMDPN-GB - Atuação estritamente dentro da Lei.
                       <Clock size={12} /> {service.timeEstimate}
                     </div>
 
-                    {/* Official Visa Advisory Box */}
-                    {service.id === 'agendamento_viagem' && (
-                      <div className="mt-3 pt-3 border-t border-primary-200/60 text-xs text-primary-950 space-y-2.5 bg-white/90 p-3 rounded-lg border">
-                        <p className="font-medium text-neutral-800 leading-snug">
-                          Disponibilizamos serviços de assessoria e orientação documental para diferentes categorias de vistos, de acordo com os requisitos aplicáveis.
-                        </p>
-                        
-                        <div className="bg-primary-50/80 p-2.5 rounded-md border border-primary-100">
-                          <span className="font-bold text-primary-950 block mb-1 flex items-center gap-1">
-                            ✈️ Áreas de atendimento:
-                          </span>
-                          <ul className="space-y-1 text-[11px] text-neutral-700 pl-1">
-                            <li>📌 Vistos de turismo e Schengen;</li>
-                            <li>📌 Vistos de estudo;</li>
-                            <li>📌 Vistos de trabalho;</li>
-                            <li>📌 Vistos de residência;</li>
-                            <li>📌 Reagrupamento familiar;</li>
-                            <li>📌 Outras categorias de vistos elegíveis</li>
-                          </ul>
-                        </div>
-                      </div>
-                    )}
                   </div>
                 );
               })}

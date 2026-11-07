@@ -18,7 +18,10 @@ import {
   Layers,
   ShieldCheck,
   Megaphone,
-  Wrench
+  Wrench,
+  History,
+  KeyRound,
+  UserPlus
 } from 'lucide-react';
 import { 
   getCustomImages, 
@@ -42,11 +45,19 @@ import {
 } from '../services/emailService';
 import { getAppointments, Appointment } from '../services/appointmentService';
 import { useToast } from '../context/ToastContext';
+import { authService } from '../services/authService';
+import {
+  createSiteBackup,
+  listSiteBackups,
+  restoreSiteBackup,
+  SiteBackup
+} from '../services/siteBackupService';
 
 import { 
   getCustomArticles, 
   deleteArticle, 
   clearAllArticles, 
+  syncArticlesFromSupabase,
   ARTICLES_UPDATED_EVENT, 
   ArticleItem 
 } from '../services/articleService';
@@ -76,6 +87,17 @@ export function DeveloperImageManager() {
 
   // Storage info
   const [storageUsageKb, setStorageUsageKb] = useState<number>(0);
+  const [backups, setBackups] = useState<SiteBackup[]>([]);
+  const [backupLabel, setBackupLabel] = useState('');
+  const [isSavingBackup, setIsSavingBackup] = useState(false);
+  const [isRestoringBackup, setIsRestoringBackup] = useState<string | null>(null);
+  const [adminEmail, setAdminEmail] = useState('admin@emdpn.gw');
+  const [adminPassword, setAdminPassword] = useState('');
+  const [adminPasswordConfirm, setAdminPasswordConfirm] = useState('');
+  const [currentPassword, setCurrentPassword] = useState('');
+  const [newPassword, setNewPassword] = useState('');
+  const [newPasswordConfirm, setNewPasswordConfirm] = useState('');
+  const [isManagingAccount, setIsManagingAccount] = useState(false);
 
   const calculateStorage = () => {
     try {
@@ -93,6 +115,9 @@ export function DeveloperImageManager() {
 
   useEffect(() => {
     calculateStorage();
+    loadBackups().catch(err => {
+      error(err instanceof Error ? err.message : 'Não foi possível carregar os pontos de restauro.');
+    });
     syncImagesFromSupabase()
       .then(setCustomImages)
       .catch(err => console.error('Could not sync admin images from Supabase:', err));
@@ -113,6 +138,106 @@ export function DeveloperImageManager() {
       window.removeEventListener('storage', handleUpdate);
     };
   }, []);
+
+  const loadBackups = async () => {
+    setBackups(await listSiteBackups());
+  };
+
+  const handleCreateBackup = async (event: React.FormEvent) => {
+    event.preventDefault();
+    setIsSavingBackup(true);
+    try {
+      await createSiteBackup(backupLabel.trim() || `Ponto manual - ${new Date().toLocaleString('pt-PT')}`);
+      setBackupLabel('');
+      success('Ponto de restauro criado com sucesso.');
+      loadBackups().catch(err => {
+        error(err instanceof Error ? err.message : 'Não foi possível atualizar a lista de pontos.');
+      });
+    } catch (err) {
+      error(err instanceof Error ? err.message : 'Não foi possível criar o ponto de restauro.');
+    } finally {
+      setIsSavingBackup(false);
+    }
+  };
+
+  const handleRestoreBackup = async (backup: SiteBackup) => {
+    if (!confirm(`Restaurar "${backup.label}"? As publicações e imagens atuais serão substituídas. Será guardado um ponto com o estado atual.`)) {
+      return;
+    }
+    setIsRestoringBackup(backup.id);
+    try {
+      await restoreSiteBackup(backup.id);
+      const [restoredArticles] = await Promise.all([
+        syncArticlesFromSupabase(),
+        syncImagesFromSupabase(true)
+      ]);
+      setArticles(restoredArticles);
+      setCustomImages(getCustomImages());
+      success('Publicações e imagens restauradas com sucesso.');
+      loadBackups().catch(err => {
+        error(err instanceof Error ? err.message : 'Não foi possível atualizar a lista de pontos.');
+      });
+    } catch (err) {
+      error(err instanceof Error ? err.message : 'Não foi possível restaurar este ponto.');
+    } finally {
+      setIsRestoringBackup(null);
+    }
+  };
+
+  const hasStrongPassword = (password: string) =>
+    password.length >= 12 &&
+    password.length <= 128 &&
+    /[a-z]/.test(password) &&
+    /[A-Z]/.test(password) &&
+    /[0-9]/.test(password) &&
+    /[^A-Za-z0-9]/.test(password);
+
+  const handleCreateAdmin = async (event: React.FormEvent) => {
+    event.preventDefault();
+    if (adminPassword !== adminPasswordConfirm) {
+      error('As palavras-passe não coincidem.');
+      return;
+    }
+    if (!hasStrongPassword(adminPassword)) {
+      error('Use pelo menos 12 caracteres, incluindo maiúscula, minúscula, número e símbolo.');
+      return;
+    }
+    setIsManagingAccount(true);
+    try {
+      await authService.createAdminAccount(adminEmail, adminPassword);
+      setAdminPassword('');
+      setAdminPasswordConfirm('');
+      success('Conta de administrador criada. A pessoa já pode iniciar sessão.');
+    } catch (err) {
+      error(err instanceof Error ? err.message : 'Não foi possível criar a conta.');
+    } finally {
+      setIsManagingAccount(false);
+    }
+  };
+
+  const handleChangePassword = async (event: React.FormEvent) => {
+    event.preventDefault();
+    if (newPassword !== newPasswordConfirm) {
+      error('As novas palavras-passe não coincidem.');
+      return;
+    }
+    if (!hasStrongPassword(newPassword)) {
+      error('Use pelo menos 12 caracteres, incluindo maiúscula, minúscula, número e símbolo.');
+      return;
+    }
+    setIsManagingAccount(true);
+    try {
+      await authService.changePassword(currentPassword, newPassword);
+      setCurrentPassword('');
+      setNewPassword('');
+      setNewPasswordConfirm('');
+      success('Palavra-passe alterada com sucesso.');
+    } catch (err) {
+      error(err instanceof Error ? err.message : 'Não foi possível alterar a palavra-passe.');
+    } finally {
+      setIsManagingAccount(false);
+    }
+  };
 
   // Requested admin feature: Clear user images cache with feedback
   const handleClearUserImagesCache = async () => {
@@ -291,6 +416,162 @@ export function DeveloperImageManager() {
           </div>
         </div>
       </div>
+
+      <section className="bg-white border border-neutral-200 rounded-2xl p-6 sm:p-8 shadow-sm">
+        <div className="flex items-start gap-3 pb-4 border-b border-neutral-100">
+          <ShieldCheck className="text-primary-700 mt-0.5" size={21} />
+          <div>
+            <h3 className="text-lg font-serif font-bold text-primary-950">Segurança e Contas de Administrador</h3>
+            <p className="text-xs text-neutral-500 mt-1">Cada administrador deve usar o seu próprio e-mail e uma palavra-passe forte.</p>
+          </div>
+        </div>
+        <div className="grid lg:grid-cols-2 gap-6 pt-5">
+          <form onSubmit={handleCreateAdmin} className="space-y-3">
+            <h4 className="text-sm font-bold text-primary-950 flex items-center gap-2">
+              <UserPlus size={16} /> Criar conta de administrador
+            </h4>
+            <label className="block text-xs font-semibold text-neutral-700">
+              E-mail
+              <input
+                type="email"
+                required
+                autoComplete="email"
+                value={adminEmail}
+                onChange={event => setAdminEmail(event.target.value)}
+                className="mt-1 w-full rounded-lg border border-neutral-300 px-3 py-2.5 text-sm"
+              />
+            </label>
+            <label className="block text-xs font-semibold text-neutral-700">
+              Palavra-passe (mínimo 12 caracteres)
+              <input
+                type="password"
+                required
+                autoComplete="new-password"
+                value={adminPassword}
+                onChange={event => setAdminPassword(event.target.value)}
+                className="mt-1 w-full rounded-lg border border-neutral-300 px-3 py-2.5 text-sm"
+              />
+            </label>
+            <label className="block text-xs font-semibold text-neutral-700">
+              Confirmar palavra-passe
+              <input
+                type="password"
+                required
+                autoComplete="new-password"
+                value={adminPasswordConfirm}
+                onChange={event => setAdminPasswordConfirm(event.target.value)}
+                className="mt-1 w-full rounded-lg border border-neutral-300 px-3 py-2.5 text-sm"
+              />
+            </label>
+            <button type="submit" disabled={isManagingAccount} className="btn btn-primary px-4 py-2.5 text-xs disabled:opacity-50">
+              {isManagingAccount ? 'A processar...' : 'Criar conta segura'}
+            </button>
+          </form>
+
+          <form onSubmit={handleChangePassword} className="space-y-3 lg:border-l lg:border-neutral-100 lg:pl-6">
+            <h4 className="text-sm font-bold text-primary-950 flex items-center gap-2">
+              <KeyRound size={16} /> Alterar a minha palavra-passe
+            </h4>
+            <label className="block text-xs font-semibold text-neutral-700">
+              Palavra-passe atual
+              <input
+                type="password"
+                required
+                autoComplete="current-password"
+                value={currentPassword}
+                onChange={event => setCurrentPassword(event.target.value)}
+                className="mt-1 w-full rounded-lg border border-neutral-300 px-3 py-2.5 text-sm"
+              />
+            </label>
+            <label className="block text-xs font-semibold text-neutral-700">
+              Nova palavra-passe (mínimo 12 caracteres)
+              <input
+                type="password"
+                required
+                autoComplete="new-password"
+                value={newPassword}
+                onChange={event => setNewPassword(event.target.value)}
+                className="mt-1 w-full rounded-lg border border-neutral-300 px-3 py-2.5 text-sm"
+              />
+            </label>
+            <label className="block text-xs font-semibold text-neutral-700">
+              Confirmar nova palavra-passe
+              <input
+                type="password"
+                required
+                autoComplete="new-password"
+                value={newPasswordConfirm}
+                onChange={event => setNewPasswordConfirm(event.target.value)}
+                className="mt-1 w-full rounded-lg border border-neutral-300 px-3 py-2.5 text-sm"
+              />
+            </label>
+            <button type="submit" disabled={isManagingAccount} className="btn btn-primary px-4 py-2.5 text-xs disabled:opacity-50">
+              {isManagingAccount ? 'A processar...' : 'Alterar palavra-passe'}
+            </button>
+          </form>
+        </div>
+      </section>
+
+      <section className="bg-white border border-neutral-200 rounded-2xl p-6 sm:p-8 shadow-sm space-y-5">
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+          <div className="flex items-start gap-3">
+            <History className="text-primary-700 mt-0.5" size={21} />
+            <div>
+              <h3 className="text-lg font-serif font-bold text-primary-950">Pontos de Restauro do Conteúdo Público</h3>
+              <p className="text-xs text-neutral-500 mt-1">As publicações e as imagens são guardadas automaticamente antes de cada alteração. Agendamentos e dados de requerentes não são incluídos.</p>
+            </div>
+          </div>
+          <button
+            type="button"
+            onClick={() => loadBackups().catch(err => error(err instanceof Error ? err.message : 'Não foi possível atualizar a lista de pontos.'))}
+            className="text-xs font-bold text-primary-700 hover:text-primary-950"
+          >
+            Atualizar lista
+          </button>
+        </div>
+
+        <form onSubmit={handleCreateBackup} className="flex flex-col sm:flex-row gap-2">
+          <input
+            type="text"
+            maxLength={200}
+            value={backupLabel}
+            onChange={event => setBackupLabel(event.target.value)}
+            placeholder="Nome do ponto de restauro (opcional)"
+            className="min-w-0 flex-1 rounded-lg border border-neutral-300 px-3 py-2.5 text-sm"
+          />
+          <button type="submit" disabled={isSavingBackup} className="btn btn-primary justify-center px-4 py-2.5 text-xs disabled:opacity-50">
+            {isSavingBackup ? 'A guardar...' : 'Criar ponto agora'}
+          </button>
+        </form>
+
+        {backups.length === 0 ? (
+          <p className="rounded-xl bg-neutral-50 border border-neutral-200 p-4 text-xs text-neutral-500">
+            Ainda não existem pontos de restauro. As próximas alterações criarão cópias automaticamente.
+          </p>
+        ) : (
+          <ul className="divide-y divide-neutral-100 border border-neutral-200 rounded-xl">
+            {backups.map(backup => (
+              <li key={backup.id} className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 p-4">
+                <div className="min-w-0">
+                  <p className="font-semibold text-sm text-neutral-900 break-words">{backup.label}</p>
+                  <time className="text-xs text-neutral-500" dateTime={backup.created_at}>
+                    {new Date(backup.created_at).toLocaleString('pt-PT')}
+                  </time>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => handleRestoreBackup(backup)}
+                  disabled={isRestoringBackup !== null}
+                  className="inline-flex items-center justify-center gap-2 rounded-lg border border-amber-300 bg-amber-50 px-3 py-2 text-xs font-bold text-amber-900 hover:bg-amber-100 disabled:opacity-50"
+                >
+                  <RefreshCw size={14} />
+                  {isRestoringBackup === backup.id ? 'A restaurar...' : 'Restaurar'}
+                </button>
+              </li>
+            ))}
+          </ul>
+        )}
+      </section>
 
       {/* REQUESTED ADMIN DEVELOPER BLOCKS */}
       <div className="bg-white border border-neutral-200 rounded-2xl p-6 sm:p-8 shadow-sm space-y-6">

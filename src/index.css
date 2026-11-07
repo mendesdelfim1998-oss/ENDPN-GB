@@ -3,9 +3,18 @@
 @tailwind utilities;
 
 @layer base {
+  html {
+    scroll-behavior: smooth;
+  }
+
   body {
     @apply font-sans text-primary-950 bg-white antialiased overflow-x-hidden;
     line-height: 1.65;
+    min-width: 320px;
+  }
+
+  img, video, iframe {
+    max-width: 100%;
   }
   
   h1, h2, h3, h4 {
@@ -36,6 +45,14 @@
 
   .card {
     @apply bg-white border border-primary-200 rounded-lg p-7 shadow-sm transition-all duration-300 hover:-translate-y-1 hover:shadow-lg hover:border-[#16845B];
+  }
+}
+
+@media (max-width: 640px) {
+  .btn {
+    max-width: 100%;
+    white-space: normal;
+    justify-content: center;
   }
 }
 

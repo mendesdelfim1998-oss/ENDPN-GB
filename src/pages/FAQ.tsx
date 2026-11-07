@@ -13,8 +13,8 @@ export function FAQ() {
       a: "Non. L’EMDPN-GB est un cabinet de conseil juridique et de facilitation documentaire. Il intervient comme Partenaire d’État pour accélérer vos formalités auprès du Ministère de la Justice et des Conservatoires compétents."
     },
     {
-      q: "2. Comment fonctionne la prise de rendez-vous pour visa de voyage / démarches auprès des ambassades ?",
-      a: "La prise de rendez-vous pour visa de voyage / démarches auprès des ambassades est un service prioritaire destiné à qui possède un voyage urgent ou un vol confirmé. Le cabinet accélère l'obtention en urgence de l'extrait d'acte de naissance, de la carte d'identité et du passeport."
+      q: "2. Comment réserver une consultation de nationalité ?",
+      a: "Choisissez le service de nationalité ou de documents souhaité dans le portail de rendez-vous, puis sélectionnez un créneau disponible."
     },
     {
       q: "3. Quels sont les documents traités par le cabinet ?",
@@ -42,8 +42,8 @@ export function FAQ() {
       a: "No. EMDPN-GB is a specialized legal facilitation and civil documentation bureau. We operate as an official State Partner facilitating and expediting procedures with the Ministry of Justice and central registry directorates."
     },
     {
-      q: "2. How does the Travel Visa Appointment Booking / embassy consultation work?",
-      a: "The Travel Visa Appointment Booking / embassy consultation is an expedited priority service for applicants with urgent travel deadlines or booked flights. Our bureau facilitates the urgent acquisition of birth certificates, national identity cards, and biometric passports."
+      q: "2. How can I book a nationality consultation?",
+      a: "Choose the nationality or document service you need in the appointment portal and select an available time slot."
     },
     {
       q: "3. What types of records does the bureau process?",
@@ -71,8 +71,8 @@ export function FAQ() {
       a: "No. El EMDPN-GB es un gabinete especializado de consultoría y gestión documental. Actúa como Socio de Estado para agilizar trámites ante el Ministerio de Justicia y la Dirección General competente."
     },
     {
-      q: "2. ¿Cómo funciona la cita para solicitud de visado de viaje / consulta en embajadas?",
-      a: "La cita para solicitud de visado de viaje / consulta en embajadas es un servicio prioritario destinado a quien posee viaje urgente o vuelo confirmado. El despacho agiliza la obtención urgente de partida de nacimiento, carnet de identidad y pasaporte."
+      q: "2. ¿Cómo puedo reservar una consulta de nacionalidad?",
+      a: "Elija el servicio de nacionalidad o documentación que necesita en el portal de citas y seleccione un horario disponible."
     },
     {
       q: "3. ¿Qué documentos tramita el gabinete?",
@@ -100,8 +100,8 @@ export function FAQ() {
       a: "Não. O EMDPN-GB é um escritório de consultoria e movimentação documental. Atua como Parceiro de Estado e facilitador legal para agilizar os processos junto de Ministérios e Direções competentes."
     },
     {
-      q: "2. Como funciona o Agendamento de pedido de visto de Viagem por consulta nas embaixadas?",
-      a: "O Agendamento de pedido de visto de Viagem por consulta nas embaixadas é um serviço prioritário destinado a quem possui viagem urgente ou voo marcado. O escritório agiliza a obtenção urgente de certidão de nascimento, bilhete de identidade e passaporte."
+      q: "2. Como posso agendar uma consulta de nacionalidade?",
+      a: "Escolha o serviço de nacionalidade ou documento pretendido no portal de agendamentos e selecione um horário disponível."
     },
     {
       q: "3. Quais os documentos e processos que o escritório pode tratar?",

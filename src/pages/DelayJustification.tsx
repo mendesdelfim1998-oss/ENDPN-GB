@@ -5,8 +5,7 @@ import {
   Building2, 
   FileText, 
   ShieldCheck, 
-  ArrowLeft, 
-  Plane 
+  ArrowLeft
 } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { useLanguage } from '../context/LanguageContext';
@@ -175,47 +174,6 @@ export function DelayJustification() {
 
           </div>
         </div>
-
-        {/* Urgency for Travel - Agendamento de pedido de visto */}
-        <Reveal delay={0.3}>
-          <div className="bg-white rounded-2xl border border-neutral-200 p-8 shadow-sm mb-12 flex flex-col md:flex-row items-center justify-between gap-6">
-            <div className="flex items-start gap-4">
-              <div className="w-12 h-12 rounded-xl bg-primary-100 text-primary-800 flex items-center justify-center shrink-0">
-                <Plane size={24} />
-              </div>
-              <div>
-                <span className="text-[11px] font-bold text-primary-700 uppercase tracking-wider block">
-                  {language === 'fr' 
-                    ? 'Besoin de voyager d’urgence ?' 
-                    : language === 'en' 
-                    ? 'Urgent Travel Needed?' 
-                    : language === 'es' 
-                    ? '¿Necesita viajar con urgencia?' 
-                    : 'Precisa de Viajar com Urgência?'}
-                </span>
-                <h4 className="text-lg font-bold text-primary-950">
-                  {t.services.serviceTravel}
-                </h4>
-                <p className="text-xs sm:text-sm text-neutral-600 mt-1 max-w-2xl">
-                  {t.services.serviceTravelDesc}
-                </p>
-              </div>
-            </div>
-
-            <Link 
-              to="/agendamento" 
-              className="btn btn-primary text-xs sm:text-sm px-6 py-3 whitespace-nowrap shrink-0 shadow-md"
-            >
-              {language === 'fr' 
-                ? 'Prendre Rendez-vous Voyage' 
-                : language === 'en' 
-                ? 'Book Travel Appointment' 
-                : language === 'es' 
-                ? 'Agendar Cita por Viaje' 
-                : 'Marcar Agendamento por Viagem'}
-            </Link>
-          </div>
-        </Reveal>
 
         {/* Professional Commitment & Contact */}
         <Reveal delay={0.4}>

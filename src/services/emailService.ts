@@ -166,7 +166,7 @@ EMDPN-GB · Safim / Bissau, República da Guiné-Bissau
         <h4 style="margin: 0 0 8px; color: #1e40af; font-size: 13px; text-transform: uppercase;">Próximos Passos</h4>
         <ul style="margin: 0; padding-left: 20px; font-size: 13px; color: #1e3a8a; line-height: 1.6;">
           <li>Guarde este e-mail ou anote o seu número de protocolo para qualquer consulta.</li>
-          <li>Em caso de urgência de viagem ou emissão célere, envie o seu bilhete de passagem para o nosso WhatsApp (+245 957000555).</li>
+          <li>Confirme que os dados e o horário do atendimento estão corretos antes da sua consulta.</li>
           <li>Para enviar certidões ou documentos antecipados, responda diretamente a este e-mail.</li>
         </ul>
       </div>

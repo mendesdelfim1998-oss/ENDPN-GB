@@ -1,6 +1,7 @@
 import { supabase } from '../lib/supabase';
 import { authService } from './authService';
 import { uploadImageToStorage } from './imageService';
+import { createSiteBackup } from './siteBackupService';
 
 export interface ArticleItem {
   id?: string;
@@ -83,6 +84,7 @@ export async function saveArticle(article: Omit<ArticleItem, 'id'> & { id?: stri
   if (savedArticle.imageUrl?.startsWith('data:image/')) {
     savedArticle.imageUrl = await uploadImageToStorage(savedArticle.imageUrl);
   }
+  await createSiteBackup(`Antes de publicar: ${savedArticle.title}`);
   const { error } = await supabase.from('articles').upsert({
     id: savedArticle.id,
     title: savedArticle.title,
@@ -108,6 +110,7 @@ export async function deleteArticle(id: string): Promise<boolean> {
     throw new Error('Acesso negado: somente o administrador autenticado pode apagar publicações.');
   }
 
+  await createSiteBackup(`Antes de apagar publicação: ${id}`);
   const { error } = await supabase.from('articles').delete().eq('id', id);
   if (error) {
     console.error('Could not delete article from Supabase:', error);
@@ -123,6 +126,7 @@ export async function clearAllArticles(): Promise<boolean> {
     throw new Error('Acesso negado: somente o administrador autenticado pode limpar publicações.');
   }
 
+  await createSiteBackup('Antes de apagar todas as publicações');
   const { error } = await supabase.from('articles').delete().neq('id', '');
   if (error) {
     console.error('Could not clear articles from Supabase:', error);

@@ -23,13 +23,16 @@ import {
   Megaphone,
   Wrench,
   Upload,
-  Image as ImageIcon
+  Image as ImageIcon,
+  RotateCcw
 } from 'lucide-react';
 import { 
   getAppointments, 
   updateAppointmentStatus, 
   deleteAppointment, 
   getStatsMetrics, 
+  getSiteVisitorCount,
+  resetSiteVisitorCount,
   Appointment 
 } from '../services/appointmentService';
 import { authService } from '../services/authService';
@@ -58,6 +61,7 @@ export function AdminPage() {
   const [filterStatus, setFilterStatus] = useState<string>('todos');
   const [searchTerm, setSearchTerm] = useState('');
   const [stats, setStats] = useState(getStatsMetrics());
+  const [isResettingVisitors, setIsResettingVisitors] = useState(false);
 
   // Custom articles management for admin
   const [customArticles, setCustomArticles] = useState<ArticleItem[]>(getCustomArticles());
@@ -75,6 +79,12 @@ export function AdminPage() {
       return;
     }
     loadData();
+    getSiteVisitorCount()
+      .then(visitors => setStats(current => ({ ...current, visitors })))
+      .catch(err => {
+        console.error('Could not load global visitor count:', err);
+        error(err.message || 'Não foi possível carregar o contador global.');
+      });
     syncArticlesFromSupabase().catch(err => {
       console.error('Could not sync admin publications from Supabase:', err);
       error(err.message || 'Não foi possível carregar as publicações.');
@@ -95,6 +105,20 @@ export function AdminPage() {
     setAppointments(getAppointments());
     setStats(getStatsMetrics());
     setCustomArticles(getCustomArticles());
+  };
+
+  const handleResetVisitors = async () => {
+    if (!confirm('Tem a certeza que deseja repor o contador global de visitantes a zero?')) return;
+    setIsResettingVisitors(true);
+    try {
+      const visitors = await resetSiteVisitorCount();
+      setStats(current => ({ ...current, visitors }));
+      success('Contador global de visitantes reiniciado.');
+    } catch (err) {
+      error(err instanceof Error ? err.message : 'Não foi possível reiniciar o contador.');
+    } finally {
+      setIsResettingVisitors(false);
+    }
   };
 
   const handleStatusChange = (id: string, newStatus: Appointment['status']) => {
@@ -308,7 +332,18 @@ export function AdminPage() {
           <div className="bg-white p-5 rounded-xl border border-neutral-200 shadow-sm">
             <span className="text-xs font-bold text-neutral-500 uppercase tracking-wider block mb-1">Visitantes Registados</span>
             <div className="text-2xl font-black text-neutral-800">{stats.visitors}</div>
-            <span className="text-[11px] text-neutral-400 font-semibold mt-1 block">Visualizações de página</span>
+            <div className="flex items-center justify-between gap-2 mt-1">
+              <span className="text-[11px] text-neutral-400 font-semibold">Visitantes únicos</span>
+              <button
+                type="button"
+                onClick={handleResetVisitors}
+                disabled={isResettingVisitors}
+                className="inline-flex items-center gap-1 text-[10px] font-bold text-red-700 hover:text-red-900 disabled:opacity-50"
+              >
+                <RotateCcw size={12} />
+                {isResettingVisitors ? 'A repor…' : 'Repor a zero'}
+              </button>
+            </div>
           </div>
         </div>
 

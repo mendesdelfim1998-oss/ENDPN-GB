@@ -75,7 +75,7 @@ export function Header() {
           
           {/* Brand matching reference image: República da [Emblema] Guiné-Bissau */}
           <Link to="/" className="flex items-center gap-2 sm:gap-3 group shrink-0 py-1">
-            <span className="font-serif italic font-bold text-xs sm:text-base text-primary-950 tracking-tight whitespace-nowrap">
+            <span className="font-serif italic font-bold text-xs sm:text-base text-primary-950 tracking-tight whitespace-nowrap max-[380px]:hidden">
               {t.hero.republicPrefix}
             </span>
             <div className="w-8 h-8 sm:w-10 sm:h-10 flex items-center justify-center bg-transparent group-hover:scale-105 transition-transform duration-300 drop-shadow-sm shrink-0">
@@ -147,7 +147,7 @@ export function Header() {
             <LanguageSwitcher />
             <button 
               onClick={() => setIsSearchModalOpen(true)}
-              className="p-2 text-primary-900 border border-neutral-300 rounded-lg hover:bg-neutral-100 transition-colors"
+              className="p-2 text-primary-900 border border-neutral-300 rounded-lg hover:bg-neutral-100 transition-colors max-[380px]:hidden"
               aria-label="Pesquisar Agendamento"
               title="Pesquisar Agendamento"
             >
@@ -155,7 +155,7 @@ export function Header() {
             </button>
             <Link
               to="/agendamento"
-              className="inline-flex items-center gap-1 px-2.5 py-1.5 bg-accent-500 text-neutral-950 rounded-md font-bold text-xs shadow-sm"
+              className="inline-flex items-center gap-1 px-2.5 py-1.5 bg-accent-500 text-neutral-950 rounded-md font-bold text-xs shadow-sm max-[380px]:hidden"
             >
               <Calendar size={13} /> {t.nav.book}
             </Link>

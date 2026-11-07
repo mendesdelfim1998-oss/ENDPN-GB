@@ -1,5 +1,6 @@
 import { supabase } from '../lib/supabase';
 import { authService } from './authService';
+import { createSiteBackup } from './siteBackupService';
 import audienceShowcaseImage from '../assets/images/consular_citizenship_reception_1792939718416.jpg';
 
 export interface CustomImagesState {
@@ -96,10 +97,13 @@ export function getCustomImages(): CustomImagesState {
   }
 }
 
-export async function syncImagesFromSupabase(): Promise<CustomImagesState> {
+export async function syncImagesFromSupabase(strict = false): Promise<CustomImagesState> {
   const { data, error } = await supabase.from('site_settings').select('key, value');
   if (error) {
     console.error('Could not load shared images from Supabase:', error);
+    if (strict) {
+      throw new Error('Não foi possível atualizar as imagens restauradas do portal.');
+    }
     return getCustomImages();
   }
 
@@ -129,6 +133,7 @@ export async function syncImagesFromSupabase(): Promise<CustomImagesState> {
 export async function setCustomImage(key: EditableImageKey, dataUrl: string): Promise<void> {
   requireAdmin();
   const imageUrl = await uploadImageToStorage(dataUrl);
+  await createSiteBackup(`Antes de alterar imagem: ${key}`);
   await saveSetting(key, imageUrl);
   const current = getCustomImages();
   current[key] = imageUrl;
@@ -141,6 +146,7 @@ export async function addGalleryPhoto(dataUrl: string): Promise<void> {
   const imageUrl = await uploadImageToStorage(dataUrl);
   const current = getCustomImages();
   const photos = [imageUrl, ...(current.galleryPhotos || DEFAULT_IMAGES.galleryPhotos)];
+  await createSiteBackup('Antes de adicionar foto à galeria');
   await saveSetting('galleryPhotos', JSON.stringify(photos));
   current.galleryPhotos = photos;
   current.updatedAt = new Date().toISOString();
@@ -151,6 +157,7 @@ export async function removeGalleryPhoto(index: number): Promise<void> {
   requireAdmin();
   const current = getCustomImages();
   const photos = (current.galleryPhotos || DEFAULT_IMAGES.galleryPhotos).filter((_, i) => i !== index);
+  await createSiteBackup('Antes de remover foto da galeria');
   await saveSetting('galleryPhotos', JSON.stringify(photos));
   current.galleryPhotos = photos;
   current.updatedAt = new Date().toISOString();
@@ -159,6 +166,7 @@ export async function removeGalleryPhoto(index: number): Promise<void> {
 
 export async function resetImageToDefault(key: EditableImageKey): Promise<void> {
   requireAdmin();
+  await createSiteBackup(`Antes de restaurar imagem: ${key}`);
   const { error } = await supabase.from('site_settings').delete().eq('key', key);
   if (error) {
     console.error('Could not reset shared image in Supabase:', error);
@@ -210,6 +218,7 @@ export function clearUnusedImages(): { clearedCount: number; message: string } {
 
 export async function resetAllImages(): Promise<void> {
   requireAdmin();
+  await createSiteBackup('Antes de restaurar todas as imagens');
   const { error } = await supabase.from('site_settings').delete().neq('key', '');
   if (error) {
     console.error('Could not reset shared images in Supabase:', error);

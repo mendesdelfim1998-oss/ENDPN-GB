@@ -1,7 +1,7 @@
 import React from 'react';
 import { PageHeader } from '../components/PageHeader';
 import { Reveal } from '../components/Reveal';
-import { FileText, Shield, Globe, ClipboardCheck, Plane, ArrowRight, FileCheck2, Smartphone, CheckCircle } from 'lucide-react';
+import { FileText, Shield, Globe, ClipboardCheck, FileCheck2, Smartphone, CheckCircle } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { useLanguage } from '../context/LanguageContext';
 
@@ -9,18 +9,6 @@ export function Services() {
   const { t, language } = useLanguage();
 
   const services = [
-    {
-      icon: <Plane className="w-6 h-6 text-accent-600" />,
-      title: t.services.serviceTravel,
-      desc: t.services.serviceTravelDesc,
-      points: language === 'fr' 
-        ? ["Émission express de Passeport", "Renouvellement urgent de Carte d’Identité", "Tri sous 24h à 48h"]
-        : language === 'en'
-        ? ["Express Passport Issuance", "Urgent National ID Renewal", "Assessment within 24h to 48h"]
-        : language === 'es'
-        ? ["Emisión exprés de Pasaporte", "Renovación urgente de Carnet", "Evaluación en 24h a 48h"]
-        : ["Emissão expressa de Passaporte", "Renovação urgente de BI", "Triagem em 24h a 48h"]
-    },
     {
       icon: <Globe className="w-6 h-6" />,
       title: t.services.serviceDiaspora,
@@ -162,16 +150,6 @@ export function Services() {
                       </li>
                     ))}
                   </ul>
-                  {idx === 0 && (
-                    <div className="mt-6 pt-4 border-t border-accent-100">
-                      <Link 
-                        to="/agendamento" 
-                        className="btn btn-primary w-full justify-center text-xs py-2.5 shadow-sm"
-                      >
-                        {language === 'fr' ? 'Réserver Urgence de Voyage' : language === 'en' ? 'Book Travel Emergency' : language === 'es' ? 'Agendar Urgencia de Viaje' : 'Agendar Urgência de Viagem'} <ArrowRight size={14} />
-                      </Link>
-                    </div>
-                  )}
                 </div>
               </Reveal>
             ))}

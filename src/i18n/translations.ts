@@ -123,7 +123,6 @@ export const translations = {
       subtitle: 'Agende a sua consulta presencial ou digital, ou consulte o estado do seu agendamento em tempo real.',
       tabBook: 'Agendar Novo Atendimento',
       tabTrack: 'Consultar Agendamento Existente',
-      noticeTravel: 'Inclui modalidade de Agendamento por Viagem urgente com tratamento consular prioritário.'
     },
     partners: {
       title: 'Articulação Institucional do Estado',
@@ -374,17 +373,15 @@ export const translations = {
     },
     services: {
       title: 'Nossos Serviços & Organização Documental',
-      subtitle: 'Soluções ágeis, Agendamento de pedido de visto e cadeia documental organizada em ordem crescente rigorosa.',
+      subtitle: 'Soluções jurídicas e documentação organizada em ordem crescente rigorosa.',
       catalogBadge: 'Catálogo de Serviços Oficiais',
       catalogTitle: 'Atendimento Especializado',
-      catalogDesc: 'Desde o atendimento expresso para quem tem viagem marcada até à tramitação completa de processos de nacionalidade.',
+      catalogDesc: 'Apoio especializado em processos de nacionalidade e documentação oficial.',
       ascendingTitle: 'Cadeia de Documentos em Ordem Crescente',
       ascendingSubtitle: 'A legislação guineense exige que cada documento seja emitido com base no anterior:',
       commitmentTitle: 'Compromisso com a Celeridade',
       commitmentDesc: 'Sabemos que o seu tempo é precioso. O nosso escritório utiliza canais diretos e legais para garantir que o seu processo não fique parado em gavetas administrativas.',
       btnBookAppointment: 'SOLICITAR AGENDAMENTO',
-      serviceTravel: 'Agendamento de pedido de visto de Viagem/ consulta nas embaçadas',
-      serviceTravelDesc: 'Atendimento prioritário de emergência para passageiros com bilhete emitido, compromissos internacionais e vistos inadiáveis.',
       serviceDiaspora: 'Naturalização para a Diáspora',
       serviceDiasporaDesc: 'Apoio completo a guineenses e à diáspora no estrangeiro que desejam obter a sua nacionalidade e regularizar a sua documentação.',
       serviceDocChain: 'Documentação Nacional em Sequência Legal',
@@ -632,13 +629,6 @@ export const translations = {
       step1Subtitle: 'Processos de nacionalidade, naturalização e documentos oficiais da República da Guiné-Bissau.',
       
       services: {
-        travel: {
-          category: 'Viagem & Urgência',
-          name: 'Agendamento por Viagem (Urgência & Voo)',
-          fee: 'Taxa Notarial de Urgência',
-          desc: 'Atendimento prioritário de emergência para passageiros com bilhete emitido, voos próximos, obtenção ou renovação expressa de passaportes e vistos.',
-          estimate: 'Atendimento prioritário imediato (24h a 48h)'
-        },
         naturalization: {
           category: 'Naturalização',
           name: 'Aquisição de Nacionalidade por Naturalização',
@@ -846,7 +836,6 @@ export const translations = {
       subtitle: 'Planifiez votre consultation présentielle ou en visioconférence, ou consultez l’état d’avancement de votre dossier en direct.',
       tabBook: 'Nouveau Rendez-vous',
       tabTrack: 'Consulter un Rendez-vous',
-      noticeTravel: 'Comprend l’option « Rendez-vous pour Demande de Visa de Voyage » urgent avec traitement consulaire prioritaire.'
     },
     partners: {
       title: 'Coordination Institutionnelle avec l’État',
@@ -1097,17 +1086,15 @@ export const translations = {
     },
     services: {
       title: 'Nos Services & Organisation Documentaire',
-      subtitle: 'Solutions rapides, Prise de rendez-vous pour visa et chaîne documentaire en ordre légal strict.',
+      subtitle: 'Solutions juridiques et chaîne documentaire en ordre légal strict.',
       catalogBadge: 'Catalogue des Services Officiels',
       catalogTitle: 'Assistance Spécialisée',
-      catalogDesc: 'Du traitement d’urgence pour départs imminents jusqu’à la naturalisation complète.',
+      catalogDesc: 'Accompagnement spécialisé en procédures de nationalité et documents officiels.',
       ascendingTitle: 'Chaîne des Pièces en Ordre Croissant',
       ascendingSubtitle: 'La législation guinéenne impose que chaque pièce soit émise sur la base de la précédente :',
       commitmentTitle: 'Engagement de Diligence',
       commitmentDesc: 'Votre temps est précieux. Notre cabinet utilise des voies officielles directes pour éviter tout blocage administratif.',
       btnBookAppointment: 'DEMANDER UN RENDEZ-VOUS',
-      serviceTravel: 'Prise de rendez-vous pour visa de voyage / démarches auprès des ambassades',
-      serviceTravelDesc: 'Assistance prioritaire d’urgence pour voyageurs avec billet d’avion réservé, engagements internationaux et visas impératifs.',
       serviceDiaspora: 'Naturalisation pour la Diaspora',
       serviceDiasporaDesc: 'Accompagnement complet des membres de la diaspora souhaitant obtenir leur nationalité et régulariser leur état civil.',
       serviceDocChain: 'Documents Nationaux en Ordre Légal',
@@ -1355,13 +1342,6 @@ export const translations = {
       step1Subtitle: 'Procédures de nationalité, naturalisation et documents officiels de la République de Guinée-Bissau.',
       
       services: {
-        travel: {
-          category: 'Voyage & Urgence',
-          name: 'Rendez-vous Voyage Urgent (Vol & Ambassade)',
-          fee: 'Frais Notariés d’Urgence',
-          desc: 'Prise en charge prioritaire pour passagers ayant un billet émis, engagements internationaux et visas consulaires immédiats.',
-          estimate: 'Traitement prioritaire express (24h à 48h)'
-        },
         naturalization: {
           category: 'Naturalisation',
           name: 'Acquisition de la Nationalité par Naturalisation',
@@ -1569,7 +1549,6 @@ export const translations = {
       subtitle: 'Schedule an in-person or digital legal consultation, or verify your booking status in real time.',
       tabBook: 'Book New Appointment',
       tabTrack: 'Check Existing Booking',
-      noticeTravel: 'Includes expedited Travel Visa Appointment Booking for applicants with immediate departure deadlines.'
     },
     partners: {
       title: 'Official State Institutional Synergy',
@@ -1820,17 +1799,15 @@ export const translations = {
     },
     services: {
       title: 'Our Services & Document Chain',
-      subtitle: 'Agile legal solutions, Travel Visa Appointment Booking, and documentation organized in strict ascending order.',
+      subtitle: 'Agile legal solutions, nationality services, and documentation organized in strict ascending order.',
       catalogBadge: 'Official Services Catalog',
       catalogTitle: 'Specialized Legal Services',
-      catalogDesc: 'From express bookings for travelers with imminent flights to full nationality processing.',
+      catalogDesc: 'Specialized support for nationality proceedings and official documents.',
       ascendingTitle: 'Ascending Legal Document Hierarchy',
       ascendingSubtitle: 'Guinea-Bissau law strictly mandates that each primary document is issued based on the preceding one:',
       commitmentTitle: 'Commitment to Speed & Rigor',
       commitmentDesc: 'Your time is invaluable. Our bureau relies on direct, lawful government liaisons to ensure files never get stuck in bureaucratic drawers.',
       btnBookAppointment: 'REQUEST APPOINTMENT',
-      serviceTravel: 'Agendamento de pedido de visto de Viagem/ consulta nas embaçadas',
-      serviceTravelDesc: 'Emergency priority service for passengers with issued tickets, international commitments, and urgent visa deadlines.',
       serviceDiaspora: 'Naturalization for the Diaspora',
       serviceDiasporaDesc: 'Complete guidance for Guinea-Bissau diaspora abroad seeking origin nationality, civil registry, and consular identity documents.',
       serviceDocChain: 'National Documents in Lawful Hierarchy',
@@ -2078,13 +2055,6 @@ export const translations = {
       step1Subtitle: 'Nationality proceedings, naturalization, and official documentation of the Republic of Guinea-Bissau.',
       
       services: {
-        travel: {
-          category: 'Travel & Urgency',
-          name: 'Urgent Travel Appointment (Flight & Visa)',
-          fee: 'Urgent Notarial Fee',
-          desc: 'Emergency priority consultation for passengers with issued tickets, urgent flights, and embassy visa appointments.',
-          estimate: 'Immediate priority triage (24h to 48h)'
-        },
         naturalization: {
           category: 'Naturalization',
           name: 'Acquisition of Nationality by Naturalization',
@@ -2292,7 +2262,6 @@ export const translations = {
       subtitle: 'Programe su consulta presencial o por videollamada, o consulte el estado de su cita en tiempo real.',
       tabBook: 'Agendar Nueva Cita',
       tabTrack: 'Consultar Cita Existente',
-      noticeTravel: 'Incluye la modalidad urgente de solicitud de visado de viaje con tramitación consular prioritaria.'
     },
     partners: {
       title: 'Coordinación Institucional con el Estado',
@@ -2543,17 +2512,15 @@ export const translations = {
     },
     services: {
       title: 'Nuestros Servicios y Organización Documental',
-      subtitle: 'Soluciones ágiles, Citas para solicitud de visado de viaje y cadena documental en estricto orden legal ascendente.',
+      subtitle: 'Soluciones jurídicas y cadena documental en estricto orden legal ascendente.',
       catalogBadge: 'Catálogo de Servicios Oficiales',
       catalogTitle: 'Atención Especializada',
-      catalogDesc: 'Desde la atención urgente para viajeros hasta la tramitación completa de expedientes de nacionalidad.',
+      catalogDesc: 'Apoyo especializado en procedimientos de nacionalidad y documentación oficial.',
       ascendingTitle: 'Cadena de Documentos en Orden Ascendente',
       ascendingSubtitle: 'La legislación de Guinea-Bissau exige que cada documento sea emitido en base al anterior:',
       commitmentTitle: 'Compromiso de Celeridad',
       commitmentDesc: 'Su tiempo es valioso. Nuestro gabinete utiliza canales oficiales directos para evitar que su trámite se detenga en gavetas burocráticas.',
       btnBookAppointment: 'SOLICITAR CITA',
-      serviceTravel: 'Agendamento de pedido de visto de Viagem/ consulta nas embaçadas',
-      serviceTravelDesc: 'Atención prioritaria de emergencia para pasajeros con billete emitido, compromisos internacionales y visados inaplazables.',
       serviceDiaspora: 'Naturalización para la Diáspora',
       serviceDiasporaDesc: 'Apoyo integral a guineanos y a la diáspora en el exterior que desean obtener su nacionalidad legal y regularizar sus documentos.',
       serviceDocChain: 'Documentos Nacionales en Orden Legal',
@@ -2801,13 +2768,6 @@ export const translations = {
       step1Subtitle: 'Procesos de nacionalidad, naturalización y documentos oficiales de la República de Guinea-Bissau.',
       
       services: {
-        travel: {
-          category: 'Viaje y Urgencia',
-          name: 'Cita por Viaje Urgente (Vuelo y Embajada)',
-          fee: 'Tasa Notarial de Urgencia',
-          desc: 'Atención prioritaria de emergencia para pasajeros con billete emitido, vuelos inminentes y citas de visado consular.',
-          estimate: 'Triaje prioritario urgente (24h a 48h)'
-        },
         naturalization: {
           category: 'Naturalización',
           name: 'Adquisición de Nacionalidad por Naturalización',
