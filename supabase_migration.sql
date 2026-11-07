@@ -11,6 +11,7 @@ ALTER TABLE public.site_settings ENABLE ROW LEVEL SECURITY;
 
 DROP POLICY IF EXISTS "Allow public read site_settings" ON public.site_settings;
 DROP POLICY IF EXISTS "Allow write site_settings" ON public.site_settings;
+DROP POLICY IF EXISTS "Allow authenticated write access" ON public.site_settings;
 DROP POLICY IF EXISTS "Public can read site settings" ON public.site_settings;
 DROP POLICY IF EXISTS "Admins can manage site settings" ON public.site_settings;
 
