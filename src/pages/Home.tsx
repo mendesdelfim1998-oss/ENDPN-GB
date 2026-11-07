@@ -29,7 +29,7 @@ export function Home() {
   const [stats, setStats] = useState(getStatsMetrics());
   const [customImages, setCustomImages] = useState(getCustomImages());
   const { t, language } = useLanguage();
-  const isAuthenticated = authService.isAuthenticated();
+  const isAuthenticated = authService.isAdmin();
 
   useEffect(() => {
     setStats(getStatsMetrics());

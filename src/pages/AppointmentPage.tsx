@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { PageHeader } from '../components/PageHeader';
 import { Reveal } from '../components/Reveal';
 import { AppointmentBookingModal } from '../components/AppointmentBookingModal';
@@ -7,11 +7,26 @@ import { getLocalizedOfficialServices } from '../services/appointmentService';
 import { Calendar, Search, ListFilter, ShieldCheck, MapPin, Clock } from 'lucide-react';
 import { useLanguage } from '../context/LanguageContext';
 import { useSearchParams, useLocation } from 'react-router-dom';
+import { getServiceFeeOverrides, SERVICE_FEES_UPDATED_EVENT, ServiceFeeOverrides } from '../services/serviceFeeService';
+import { useToast } from '../context/ToastContext';
 
 export function AppointmentPage() {
   const { t, language } = useLanguage();
+  const { error } = useToast();
   const apt = t.appointments;
-  const servicesList = getLocalizedOfficialServices(t);
+  const [feeOverrides, setFeeOverrides] = useState<ServiceFeeOverrides>({});
+  const servicesList = getLocalizedOfficialServices(t, feeOverrides);
+
+  useEffect(() => {
+    const loadFees = () => {
+      getServiceFeeOverrides()
+        .then(setFeeOverrides)
+        .catch(err => error(err instanceof Error ? err.message : 'Não foi possível carregar os preços.'));
+    };
+    loadFees();
+    window.addEventListener(SERVICE_FEES_UPDATED_EVENT, loadFees);
+    return () => window.removeEventListener(SERVICE_FEES_UPDATED_EVENT, loadFees);
+  }, [error]);
 
   const [searchParams] = useSearchParams();
   const location = useLocation();
@@ -70,6 +85,7 @@ export function AppointmentPage() {
           <div>
             <AppointmentBookingModal 
               initialServiceId={preselectedService}
+              feeOverrides={feeOverrides}
               onSuccess={(createdApt) => {
                 console.log('Agendamento registado:', createdApt.protocolNumber);
               }}

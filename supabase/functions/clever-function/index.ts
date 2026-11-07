@@ -54,8 +54,12 @@ Deno.serve(async request => {
 
   const email = typeof body.email === 'string' ? body.email.trim().toLowerCase() : '';
   const password = typeof body.password === 'string' ? body.password : '';
+  const role = body.role === 'secretaria' ? 'secretaria' : body.role === 'admin' ? 'admin' : null;
   if (email.length > 254 || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
     return respond(400, { error: 'Enter a valid email address.' });
+  }
+  if (!role) {
+    return respond(400, { error: 'Choose a valid account role.' });
   }
   if (
     password.length < 12 ||
@@ -77,7 +81,7 @@ Deno.serve(async request => {
     email,
     password,
     email_confirm: true,
-    app_metadata: { role: 'admin' }
+    app_metadata: { role }
   });
   if (createError) {
     console.error('Could not create administrator account:', createError);

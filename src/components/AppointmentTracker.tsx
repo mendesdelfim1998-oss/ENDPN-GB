@@ -1,22 +1,32 @@
 import React, { useState } from 'react';
-import { Search, Calendar, Clock, MapPin, User, FileText, CheckCircle2, Clock3, AlertCircle, Phone } from 'lucide-react';
-import { findAppointmentByProtocol, Appointment } from '../services/appointmentService';
+import { Search, CheckCircle2, Clock3, AlertCircle, Phone } from 'lucide-react';
+import { findAppointmentByProtocol, Appointment, AppointmentTrackingResult } from '../services/appointmentService';
 import { useLanguage } from '../context/LanguageContext';
+import { useToast } from '../context/ToastContext';
 
 export function AppointmentTracker() {
   const { t } = useLanguage();
+  const { error } = useToast();
   const apt = t.appointments;
 
   const [query, setQuery] = useState('');
-  const [result, setResult] = useState<Appointment | null>(null);
+  const [results, setResults] = useState<AppointmentTrackingResult[]>([]);
   const [searched, setSearched] = useState(false);
+  const [isSearching, setIsSearching] = useState(false);
 
-  const handleSearch = (e: React.FormEvent) => {
+  const handleSearch = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!query.trim()) return;
-    const found = findAppointmentByProtocol(query);
-    setResult(found || null);
-    setSearched(true);
+    setIsSearching(true);
+    try {
+      const found = await findAppointmentByProtocol(query);
+      setResults(found);
+      setSearched(true);
+    } catch (err) {
+      error(err instanceof Error ? err.message : 'Não foi possível consultar o agendamento.');
+    } finally {
+      setIsSearching(false);
+    }
   };
 
   const getStatusLabel = (status: Appointment['status']) => {
@@ -44,26 +54,27 @@ export function AppointmentTracker() {
         </p>
       </div>
 
-      <form onSubmit={handleSearch} className="flex gap-2 mb-6">
-        <div className="relative flex-1">
+          <form onSubmit={handleSearch} className="grid sm:grid-cols-[1fr_auto] gap-2 mb-6">
+            <div className="relative">
           <input
-            type="text"
-            required
-            value={query}
-            onChange={e => setQuery(e.target.value)}
-            placeholder={apt.trackerPlaceholder}
-            className="w-full pl-4 pr-10 py-3 bg-neutral-50 border border-neutral-300 rounded-xl text-sm font-semibold focus:outline-none focus:border-primary-600 focus:bg-white transition-all uppercase"
-          />
+                type="text"
+                required
+                value={query}
+                onChange={e => setQuery(e.target.value)}
+                placeholder={apt.trackerPlaceholder}
+                className="w-full pl-4 pr-10 py-3 bg-neutral-50 border border-neutral-300 rounded-xl text-sm font-semibold focus:outline-none focus:border-primary-600 focus:bg-white transition-all"
+              />
         </div>
         <button
           type="submit"
-          className="btn btn-institutional px-6 py-3 text-sm shrink-0 shadow-sm"
+          disabled={isSearching}
+          className="btn btn-institutional px-6 py-3 text-sm shrink-0 shadow-sm disabled:opacity-50"
         >
-          <Search size={16} /> {apt.btnSearch}
+          <Search size={16} /> {isSearching ? 'A consultar...' : apt.btnSearch}
         </button>
       </form>
 
-      {searched && !result && (
+      {searched && results.length === 0 && (
         <div className="p-4 bg-error-50 border border-error-100 rounded-xl text-error-700 text-xs sm:text-sm flex items-start gap-3">
           <AlertCircle size={20} className="shrink-0 mt-0.5" />
           <div>
@@ -73,8 +84,8 @@ export function AppointmentTracker() {
         </div>
       )}
 
-      {result && (
-        <div className="bg-primary-50/70 border-2 border-primary-200 rounded-xl p-5 sm:p-6 text-left animate-fade-in">
+      {results.map(result => (
+        <div key={result.protocolNumber} className="mb-4 bg-primary-50/70 border-2 border-primary-200 rounded-xl p-5 sm:p-6 text-left animate-fade-in">
           <div className="flex flex-wrap items-center justify-between gap-2 border-b border-primary-200/60 pb-3 mb-4">
             <div>
               <span className="text-[11px] text-primary-700 font-bold uppercase block">{apt.trackerConfirmedBadge}</span>
@@ -109,10 +120,6 @@ export function AppointmentTracker() {
               <span className="text-neutral-500 block">{apt.steps.modality}:</span>
               <span className="font-bold text-primary-950 capitalize">{result.modality === 'presencial' ? apt.presencialTitle : apt.onlineTitle}</span>
             </div>
-            <div className="sm:col-span-2 pt-2 border-t border-primary-200/40">
-              <span className="text-neutral-500 block">{apt.labelApplicant}</span>
-              <span className="font-semibold text-neutral-800">{result.fullName} • Doc: {result.documentNumber}</span>
-            </div>
           </div>
 
           <div className="mt-4 pt-3 border-t border-primary-200/60 flex items-center justify-between text-xs">
@@ -127,7 +134,7 @@ export function AppointmentTracker() {
             </a>
           </div>
         </div>
-      )}
+      ))}
     </div>
   );
 }

@@ -65,7 +65,15 @@ export function generateAppointmentEmailContent(appointment: Appointment): {
   htmlBody: string;
   textBody: string;
 } {
-  const subject = `[EMDPN-GB] Confirmação Oficial de Agendamento: ${appointment.protocolNumber} - ${appointment.fullName}`;
+  const statusLabels: Record<Appointment['status'], string> = {
+    pendente: 'Pendente de análise',
+    confirmado: 'Confirmado',
+    concluido: 'Concluído',
+    cancelado: 'Cancelado'
+  };
+  const statusLabel = statusLabels[appointment.status];
+  const trackingUrl = `${window.location.origin}/agendamento?tab=consultar`;
+  const subject = `[EMDPN-GB] Pedido de agendamento recebido: ${appointment.protocolNumber}`;
 
   const textBody = `
 REPÚBLICA DA GUINÉ-BISSAU
@@ -76,6 +84,7 @@ ESCRITÓRIO DE MOVIMENTAÇÃO DE DOCUMENTOS E PROCESSOS DE NATURALIZAÇÃO (EMDP
 Estimado(a) ${appointment.fullName},
 
 Confirmamos com sucesso a receção do seu pedido de agendamento no portal oficial do EMDPN-GB.
+Estado atual: ${statusLabel}. A equipa administrativa analisará o pedido e atualizará o estado no sistema.
 
 --- DADOS OFICIAIS DO AGENDAMENTO ---
 • Nº de Protocolo Oficial: ${appointment.protocolNumber}
@@ -89,12 +98,12 @@ Confirmamos com sucesso a receção do seu pedido de agendamento no portal ofici
 • Documento de Referência: ${appointment.documentNumber}
 
 --- INSTRUÇÕES IMPORTANTES ---
-1. Presencial: Compareça no nosso escritório em Safim Centro / Reino, Guiné-Bissau, munido dos seus documentos originais e comprovativo deste protocolo.
-2. Online / Diáspora: A nossa equipa entrará em contacto via WhatsApp ou Google Meet no horário agendado.
+1. Aguarde a análise e a confirmação do pedido antes de se deslocar ao escritório; o estado atual é ${statusLabel}.
+2. Para pedidos online / Diáspora, a nossa equipa entrará em contacto após a confirmação.
 3. Para envio antecipado de digitalizações ou dúvidas, utilize o nosso e-mail oficial: infor.ciesemdpngb@gmail.com ou WhatsApp: +245 957000555.
 
-Consulte o estado do seu agendamento a qualquer momento em:
-https://ais-dev-lkyo4lzj73h66diyhxbb3e-615210612470.europe-west2.run.app/agendamento?tab=consultar
+Consulte o estado do seu pedido usando o número de protocolo ou o telefone registado:
+${trackingUrl}
 
 Com os melhores cumprimentos institucionais,
 Direção e Assessoria Jurídica
@@ -121,7 +130,7 @@ EMDPN-GB · Safim / Bissau, República da Guiné-Bissau
     <!-- Body -->
     <div style="padding: 30px 25px;">
       <div style="background-color: #ecfdf5; border-left: 4px solid #10b981; padding: 12px 16px; margin-bottom: 24px; border-radius: 6px;">
-        <span style="color: #065f46; font-weight: bold; font-size: 13px;">✓ Agendamento Confirmado com Sucesso</span>
+        <span style="color: #065f46; font-weight: bold; font-size: 13px;">✓ Pedido recebido — ${statusLabel}</span>
       </div>
 
       <p style="font-size: 15px; line-height: 1.6; margin-top: 0;">
@@ -137,6 +146,10 @@ EMDPN-GB · Safim / Bissau, República da Guiné-Bissau
           <tr>
             <td style="padding: 6px 0; color: #64748b; font-weight: bold;">Nº DE PROTOCOLO:</td>
             <td style="padding: 6px 0; color: #0f172a; font-family: monospace; font-size: 15px; font-weight: bold;">${appointment.protocolNumber}</td>
+          </tr>
+          <tr>
+            <td style="padding: 6px 0; color: #64748b; font-weight: bold;">ESTADO:</td>
+            <td style="padding: 6px 0; color: #0f172a; font-weight: 600;">${statusLabel}</td>
           </tr>
           <tr>
             <td style="padding: 6px 0; color: #64748b; font-weight: bold;">SERVIÇO:</td>
@@ -165,8 +178,8 @@ EMDPN-GB · Safim / Bissau, República da Guiné-Bissau
       <div style="margin: 24px 0; padding: 16px; background-color: #eff6ff; border-radius: 8px; border: 1px solid #bfdbfe;">
         <h4 style="margin: 0 0 8px; color: #1e40af; font-size: 13px; text-transform: uppercase;">Próximos Passos</h4>
         <ul style="margin: 0; padding-left: 20px; font-size: 13px; color: #1e3a8a; line-height: 1.6;">
-          <li>Guarde este e-mail ou anote o seu número de protocolo para qualquer consulta.</li>
-          <li>Confirme que os dados e o horário do atendimento estão corretos antes da sua consulta.</li>
+          <li>Consulte o estado com o número de protocolo ou o telefone registado em <a href="${trackingUrl}">${trackingUrl}</a>.</li>
+          <li>Aguarde a confirmação da equipa antes de se deslocar ao escritório ou iniciar o atendimento.</li>
           <li>Para enviar certidões ou documentos antecipados, responda diretamente a este e-mail.</li>
         </ul>
       </div>
@@ -180,7 +193,7 @@ EMDPN-GB · Safim / Bissau, República da Guiné-Bissau
 
     <!-- Footer -->
     <div style="background-color: #f1f5f9; padding: 15px 20px; text-align: center; font-size: 11px; color: #64748b; border-top: 1px solid #e2e8f0;">
-      Este é um e-mail de confirmação automática emitido pelo sistema do EMDPN-GB em conformidade com as normas legais de atendimento da República da Guiné-Bissau.
+      Este é um e-mail automático emitido pelo sistema de atendimento do EMDPN-GB.
     </div>
   </div>
 </body>

@@ -33,6 +33,9 @@ import {
   removeGalleryPhoto,
   processImageFile, 
   syncImagesFromSupabase,
+  getImageStorageUsage,
+  deleteUnusedStoredImages,
+  ImageStorageUsage,
   DEFAULT_IMAGES,
   CustomImagesState 
 } from '../services/imageService';
@@ -43,15 +46,22 @@ import {
   sendAppointmentConfirmationEmail, 
   SentEmailLog 
 } from '../services/emailService';
-import { getAppointments, Appointment } from '../services/appointmentService';
+import { getAppointments, Appointment, OFFICIAL_SERVICES } from '../services/appointmentService';
 import { useToast } from '../context/ToastContext';
-import { authService } from '../services/authService';
+import { authService, AdminUser } from '../services/authService';
 import {
   createSiteBackup,
   listSiteBackups,
   restoreSiteBackup,
+  deleteSiteBackup,
   SiteBackup
 } from '../services/siteBackupService';
+import {
+  getServiceFeeOverrides,
+  saveServiceFeeOverride,
+  resetServiceFeeOverride,
+  ServiceFeeOverrides
+} from '../services/serviceFeeService';
 
 import { 
   getCustomArticles, 
@@ -87,11 +97,19 @@ export function DeveloperImageManager() {
 
   // Storage info
   const [storageUsageKb, setStorageUsageKb] = useState<number>(0);
+  const [imageStorageUsage, setImageStorageUsage] = useState<ImageStorageUsage | null>(null);
+  const [isCleaningStorage, setIsCleaningStorage] = useState(false);
   const [backups, setBackups] = useState<SiteBackup[]>([]);
   const [backupLabel, setBackupLabel] = useState('');
   const [isSavingBackup, setIsSavingBackup] = useState(false);
   const [isRestoringBackup, setIsRestoringBackup] = useState<string | null>(null);
+  const [deletingBackup, setDeletingBackup] = useState<string | null>(null);
+  const [feeOverrides, setFeeOverrides] = useState<ServiceFeeOverrides>({});
+  const [feeDrafts, setFeeDrafts] = useState<Record<string, string>>({});
+  const [savingFee, setSavingFee] = useState<string | null>(null);
+  const configurableServices = OFFICIAL_SERVICES.filter(service => service.id !== 'triagem_documental');
   const [adminEmail, setAdminEmail] = useState('admin@emdpn.gw');
+  const [staffRole, setStaffRole] = useState<AdminUser['role']>('admin');
   const [adminPassword, setAdminPassword] = useState('');
   const [adminPasswordConfirm, setAdminPasswordConfirm] = useState('');
   const [currentPassword, setCurrentPassword] = useState('');
@@ -115,9 +133,20 @@ export function DeveloperImageManager() {
 
   useEffect(() => {
     calculateStorage();
+    getImageStorageUsage()
+      .then(setImageStorageUsage)
+      .catch(err => error(err instanceof Error ? err.message : 'Não foi possível consultar o armazenamento de imagens.'));
     loadBackups().catch(err => {
       error(err instanceof Error ? err.message : 'Não foi possível carregar os pontos de restauro.');
     });
+    getServiceFeeOverrides()
+      .then(overrides => {
+        setFeeOverrides(overrides);
+        setFeeDrafts(Object.fromEntries(
+          configurableServices.map(service => [service.id, overrides[service.id] || service.fee])
+        ));
+      })
+      .catch(err => error(err instanceof Error ? err.message : 'Não foi possível carregar os preços dos serviços.'));
     syncImagesFromSupabase()
       .then(setCustomImages)
       .catch(err => console.error('Could not sync admin images from Supabase:', err));
@@ -126,6 +155,9 @@ export function DeveloperImageManager() {
       setEmailLogs(getSentEmailLogs());
       setArticles(getCustomArticles());
       calculateStorage();
+      getImageStorageUsage().then(setImageStorageUsage).catch(err => {
+        error(err instanceof Error ? err.message : 'Não foi possível consultar o armazenamento de imagens.');
+      });
     };
     window.addEventListener('emdpn_images_updated', handleUpdate);
     window.addEventListener('emdpn_email_sent', handleUpdate);
@@ -184,6 +216,51 @@ export function DeveloperImageManager() {
     }
   };
 
+  const handleDeleteBackup = async (backup: SiteBackup) => {
+    if (!confirm(`Apagar permanentemente o ponto de restauro "${backup.label}"? Esta ação não pode ser desfeita.`)) return;
+    setDeletingBackup(backup.id);
+    try {
+      await deleteSiteBackup(backup.id);
+      setBackups(current => current.filter(item => item.id !== backup.id));
+      success('Ponto de restauro apagado.');
+    } catch (err) {
+      error(err instanceof Error ? err.message : 'Não foi possível apagar este ponto de restauro.');
+    } finally {
+      setDeletingBackup(null);
+    }
+  };
+
+  const handleSaveServiceFee = async (serviceId: string) => {
+    setSavingFee(serviceId);
+    try {
+      const fee = feeDrafts[serviceId]?.trim() || '';
+      await saveServiceFeeOverride(serviceId, fee);
+      setFeeOverrides(current => ({ ...current, [serviceId]: fee }));
+      success('Preço atualizado na tabela pública e nos novos agendamentos.');
+    } catch (err) {
+      error(err instanceof Error ? err.message : 'Não foi possível guardar o preço.');
+    } finally {
+      setSavingFee(null);
+    }
+  };
+
+  const handleResetServiceFee = async (serviceId: string) => {
+    try {
+      await resetServiceFeeOverride(serviceId);
+      const defaultFee = configurableServices.find(service => service.id === serviceId)?.fee;
+      if (!defaultFee) throw new Error('Não foi encontrado o preço padrão deste serviço.');
+      setFeeOverrides(current => {
+        const next = { ...current };
+        delete next[serviceId];
+        return next;
+      });
+      setFeeDrafts(current => ({ ...current, [serviceId]: defaultFee }));
+      success('Preço padrão restaurado.');
+    } catch (err) {
+      error(err instanceof Error ? err.message : 'Não foi possível restaurar o preço padrão.');
+    }
+  };
+
   const hasStrongPassword = (password: string) =>
     password.length >= 12 &&
     password.length <= 128 &&
@@ -204,15 +281,29 @@ export function DeveloperImageManager() {
     }
     setIsManagingAccount(true);
     try {
-      await authService.createAdminAccount(adminEmail, adminPassword);
+      await authService.createStaffAccount(adminEmail, adminPassword, staffRole);
       setAdminEmail('');
       setAdminPassword('');
       setAdminPasswordConfirm('');
-      success('Conta de administrador criada. A pessoa já pode iniciar sessão.');
+      success(`Conta de ${staffRole === 'admin' ? 'administrador' : 'secretaria'} criada. A pessoa já pode iniciar sessão.`);
     } catch (err) {
       error(err instanceof Error ? err.message : 'Não foi possível criar a conta.');
     } finally {
       setIsManagingAccount(false);
+    }
+  };
+
+  const handleCleanImageStorage = async () => {
+    if (!confirm('Remover permanentemente imagens do armazenamento que não são usadas pelo site nem por pontos de restauro?')) return;
+    setIsCleaningStorage(true);
+    try {
+      const removed = await deleteUnusedStoredImages();
+      setImageStorageUsage(await getImageStorageUsage());
+      success(`${removed} imagem(ns) sem uso removida(s) do armazenamento.`);
+    } catch (err) {
+      error(err instanceof Error ? err.message : 'Não foi possível limpar as imagens sem uso.');
+    } finally {
+      setIsCleaningStorage(false);
     }
   };
 
@@ -267,8 +358,8 @@ export function DeveloperImageManager() {
     const file = e.target.files?.[0];
     if (!file) return;
 
-    if (!file.type.startsWith('image/')) {
-      error('Por favor, selecione um ficheiro de imagem válido (JPG, PNG, WEBP).');
+    if (!['image/jpeg', 'image/png', 'image/webp'].includes(file.type)) {
+      error('Selecione uma imagem JPG, PNG ou WEBP. Vídeos e outros formatos não são aceites.');
       return;
     }
 
@@ -279,7 +370,11 @@ export function DeveloperImageManager() {
       const maxHeight = selectedTarget === 'logo' ? 400 : 960;
       const dataUrl = await processImageFile(file, maxWidth, maxHeight, 0.85);
       setPreviewDataUrl(dataUrl);
-      success(`Imagem "${file.name}" carregada com sucesso do computador! Clique em "Aplicar no Portal" para confirmar.`);
+      if (dataUrl.startsWith('data:image/webp')) {
+        const base64 = dataUrl.split(',')[1] || '';
+        const sizeKb = Math.round(base64.length * 0.75 / 1024);
+        success(`Imagem comprimida para cerca de ${sizeKb} KB. Clique em "Aplicar no Portal" para confirmar.`);
+      }
     } catch (err: any) {
       error(err.message || 'Erro ao processar imagem.');
     } finally {
@@ -312,6 +407,7 @@ export function DeveloperImageManager() {
       setSelectedFile(null);
       if (fileInputRef.current) fileInputRef.current.value = '';
       calculateStorage();
+      setImageStorageUsage(await getImageStorageUsage());
     } catch (err: any) {
       error(err.message || 'Erro ao salvar imagem.');
     } finally {
@@ -369,8 +465,9 @@ export function DeveloperImageManager() {
   };
 
   const handleSendTestEmail = async () => {
-    const appointments = getAppointments();
-    const targetApt: Appointment = appointments[0] || {
+    try {
+      const appointments = await getAppointments();
+      const targetApt: Appointment = appointments[0] || {
       id: 'apt-test',
       protocolNumber: 'EMDPN-2026-TESTE',
       serviceType: 'naturalizacao_residencia',
@@ -386,9 +483,8 @@ export function DeveloperImageManager() {
       countryOfResidence: 'Guiné-Bissau',
       status: 'confirmado',
       createdAt: new Date().toISOString().substring(0, 16)
-    };
+      };
 
-    try {
       const res = await sendAppointmentConfirmationEmail(targetApt);
       success(res.message);
     } catch {
@@ -409,12 +505,34 @@ export function DeveloperImageManager() {
           </p>
         </div>
 
-        <div className="flex items-center gap-3 bg-white/10 px-4 py-2.5 rounded-xl border border-white/15">
-          <HardDrive size={18} className="text-accent-400" />
-          <div className="text-right">
-            <span className="text-[10px] uppercase font-bold text-neutral-300 block">Armazenamento Local</span>
-            <span className="text-sm font-mono font-bold text-white">{storageUsageKb} KB utilizados</span>
+        <div className="min-w-[260px] bg-white/10 px-4 py-3 rounded-xl border border-white/15">
+          <div className="flex items-center justify-between gap-3">
+            <span className="text-[10px] uppercase font-bold text-neutral-300">Armazenamento de imagens na nuvem</span>
+            <HardDrive size={16} className="text-accent-400" />
           </div>
+          <div className="mt-1 text-xs font-mono font-bold text-white">
+            {imageStorageUsage
+              ? `${(imageStorageUsage.usedBytes / 1024 / 1024).toFixed(2)} MB usados • ${(imageStorageUsage.remainingBytes / 1024 / 1024).toFixed(2)} MB livres`
+              : 'A consultar...'}
+          </div>
+          <div className="mt-2 h-1.5 overflow-hidden rounded-full bg-white/20">
+            <div
+              className="h-full bg-accent-400"
+              style={{ width: `${imageStorageUsage ? Math.min(100, imageStorageUsage.usedBytes / imageStorageUsage.limitBytes * 100) : 0}%` }}
+            />
+          </div>
+          <div className="mt-2 flex items-center justify-between gap-3">
+            <span className="text-[10px] text-neutral-300">Limite: 100 MB</span>
+            <button
+              type="button"
+              onClick={handleCleanImageStorage}
+              disabled={isCleaningStorage || !imageStorageUsage}
+              className="text-[10px] font-bold text-accent-300 hover:text-white disabled:opacity-50"
+            >
+              {isCleaningStorage ? 'A libertar...' : 'Libertar espaço'}
+            </button>
+          </div>
+          <span className="mt-1 block text-[10px] text-neutral-400">Cache local deste dispositivo: {storageUsageKb} KB</span>
         </div>
       </div>
 
@@ -422,15 +540,26 @@ export function DeveloperImageManager() {
         <div className="flex items-start gap-3 pb-4 border-b border-neutral-100">
           <ShieldCheck className="text-primary-700 mt-0.5" size={21} />
           <div>
-            <h3 className="text-lg font-serif font-bold text-primary-950">Segurança e Contas de Administrador</h3>
-            <p className="text-xs text-neutral-500 mt-1">Cada administrador deve usar o seu próprio e-mail e uma palavra-passe forte.</p>
+            <h3 className="text-lg font-serif font-bold text-primary-950">Segurança e Contas da Equipa</h3>
+            <p className="text-xs text-neutral-500 mt-1">Cada pessoa deve usar o seu próprio e-mail, perfil e palavra-passe forte.</p>
           </div>
         </div>
         <div className="grid lg:grid-cols-2 gap-6 pt-5">
           <form onSubmit={handleCreateAdmin} className="space-y-3">
             <h4 className="text-sm font-bold text-primary-950 flex items-center gap-2">
-              <UserPlus size={16} /> Criar conta de administrador
+              <UserPlus size={16} /> Criar conta de {staffRole === 'admin' ? 'administrador' : 'secretaria'}
             </h4>
+            <label className="block text-xs font-semibold text-neutral-700">
+              Perfil da conta
+              <select
+                value={staffRole}
+                onChange={event => setStaffRole(event.target.value as AdminUser['role'])}
+                className="mt-1 w-full rounded-lg border border-neutral-300 px-3 py-2.5 text-sm"
+              >
+                <option value="admin">Administrador</option>
+                <option value="secretaria">Secretaria</option>
+              </select>
+            </label>
             <label className="block text-xs font-semibold text-neutral-700">
               E-mail
               <input
@@ -559,19 +688,82 @@ export function DeveloperImageManager() {
                     {new Date(backup.created_at).toLocaleString('pt-PT')}
                   </time>
                 </div>
-                <button
-                  type="button"
-                  onClick={() => handleRestoreBackup(backup)}
-                  disabled={isRestoringBackup !== null}
-                  className="inline-flex items-center justify-center gap-2 rounded-lg border border-amber-300 bg-amber-50 px-3 py-2 text-xs font-bold text-amber-900 hover:bg-amber-100 disabled:opacity-50"
-                >
-                  <RefreshCw size={14} />
-                  {isRestoringBackup === backup.id ? 'A restaurar...' : 'Restaurar'}
-                </button>
+                <div className="flex flex-wrap items-center gap-2">
+                  <button
+                    type="button"
+                    onClick={() => handleRestoreBackup(backup)}
+                    disabled={isRestoringBackup !== null || deletingBackup !== null}
+                    className="inline-flex items-center justify-center gap-2 rounded-lg border border-amber-300 bg-amber-50 px-3 py-2 text-xs font-bold text-amber-900 hover:bg-amber-100 disabled:opacity-50"
+                  >
+                    <RefreshCw size={14} />
+                    {isRestoringBackup === backup.id ? 'A restaurar...' : 'Restaurar'}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => handleDeleteBackup(backup)}
+                    disabled={deletingBackup !== null || isRestoringBackup !== null}
+                    className="inline-flex items-center justify-center gap-2 rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-xs font-bold text-red-700 hover:bg-red-100 disabled:opacity-50"
+                  >
+                    <Trash2 size={14} />
+                    {deletingBackup === backup.id ? 'A apagar...' : 'Apagar'}
+                  </button>
+                </div>
               </li>
             ))}
           </ul>
         )}
+      </section>
+
+      <section className="bg-white border border-neutral-200 rounded-2xl p-6 sm:p-8 shadow-sm space-y-5">
+        <div className="flex items-start gap-3 border-b border-neutral-100 pb-4">
+          <FileText className="text-primary-700 mt-0.5" size={21} />
+          <div>
+            <h3 className="text-lg font-serif font-bold text-primary-950">Personalizar preços e taxas</h3>
+            <p className="text-xs text-neutral-500 mt-1">
+              Os valores guardados são partilhados e aparecem na tabela pública e nos novos pedidos de agendamento.
+            </p>
+          </div>
+        </div>
+        <div className="divide-y divide-neutral-100">
+          {configurableServices.map(service => {
+            const hasOverride = Boolean(feeOverrides[service.id]);
+            return (
+              <div key={service.id} className="flex flex-col gap-3 py-4 sm:flex-row sm:items-end">
+                <label className="min-w-0 flex-1 text-xs font-semibold text-neutral-700">
+                  <span className="mb-1 block">{service.name}</span>
+                  <input
+                    type="text"
+                    required
+                    maxLength={160}
+                    value={feeDrafts[service.id] ?? service.fee}
+                    onChange={event => setFeeDrafts(current => ({ ...current, [service.id]: event.target.value }))}
+                    className="w-full rounded-lg border border-neutral-300 px-3 py-2.5 text-sm"
+                  />
+                </label>
+                <div className="flex shrink-0 gap-2">
+                  <button
+                    type="button"
+                    onClick={() => void handleSaveServiceFee(service.id)}
+                    disabled={savingFee !== null || !(feeDrafts[service.id] || '').trim()}
+                    className="btn btn-primary px-4 py-2.5 text-xs disabled:opacity-50"
+                  >
+                    {savingFee === service.id ? 'A guardar...' : 'Guardar'}
+                  </button>
+                  {hasOverride && (
+                    <button
+                      type="button"
+                      onClick={() => void handleResetServiceFee(service.id)}
+                      disabled={savingFee !== null}
+                      className="rounded-lg border border-neutral-300 px-3 py-2.5 text-xs font-bold text-neutral-700 hover:bg-neutral-50 disabled:opacity-50"
+                    >
+                      Padrão
+                    </button>
+                  )}
+                </div>
+              </div>
+            );
+          })}
+        </div>
       </section>
 
       {/* REQUESTED ADMIN DEVELOPER BLOCKS */}

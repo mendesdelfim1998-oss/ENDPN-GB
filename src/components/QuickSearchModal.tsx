@@ -1,8 +1,9 @@
 import React, { useState } from 'react';
-import { Search, X, Calendar, User, Phone, CheckCircle2, Clock, AlertCircle } from 'lucide-react';
-import { getAppointments, Appointment } from '../services/appointmentService';
+import { Search, X, Calendar, AlertCircle } from 'lucide-react';
+import { findAppointmentByProtocol, Appointment, AppointmentTrackingResult } from '../services/appointmentService';
 import { useLanguage } from '../context/LanguageContext';
 import { useNavigate } from 'react-router-dom';
+import { useToast } from '../context/ToastContext';
 
 interface QuickSearchModalProps {
   isOpen: boolean;
@@ -10,38 +11,40 @@ interface QuickSearchModalProps {
 }
 
 export const QuickSearchModal: React.FC<QuickSearchModalProps> = ({ isOpen, onClose }) => {
-  const { t, language } = useLanguage();
+  const { t } = useLanguage();
+  const { error } = useToast();
   const navigate = useNavigate();
   const dl = t.downloads;
   const qs = dl.quickSearch || {
     title: 'Pesquisa Rápida de Agendamento',
-    placeholder: 'Digite o nº de protocolo (ex: EMDPN-2026-...) ou nome...',
+    placeholder: 'Digite o nº de protocolo ou telefone...',
     btnSearch: 'Procurar Agendamento',
-    notFound: 'Nenhum agendamento encontrado com este número ou nome. Por favor, verifique o número de protocolo ou consulte a página de Agendamentos.',
+    notFound: 'Nenhum agendamento encontrado. Verifique o número de protocolo ou o telefone informado.',
     resultsTitle: 'Resultados da Pesquisa:',
     close: 'Fechar',
     viewTracker: 'Ir para Consulta Completa'
   };
 
   const [query, setQuery] = useState('');
-  const [results, setResults] = useState<Appointment[] | null>(null);
+  const [results, setResults] = useState<AppointmentTrackingResult[] | null>(null);
   const [searched, setSearched] = useState(false);
+  const [isSearching, setIsSearching] = useState(false);
 
   if (!isOpen) return null;
 
-  const handleSearch = (e: React.FormEvent) => {
+  const handleSearch = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!query.trim()) return;
-    const all = getAppointments();
-    const q = query.toLowerCase().trim();
-    const filtered = all.filter(item => 
-      item.protocolNumber.toLowerCase().includes(q) ||
-      item.fullName.toLowerCase().includes(q) ||
-      item.phone.toLowerCase().includes(q) ||
-      item.documentNumber.toLowerCase().includes(q)
-    );
-    setResults(filtered);
-    setSearched(true);
+    setIsSearching(true);
+    try {
+      const found = await findAppointmentByProtocol(query);
+      setResults(found);
+      setSearched(true);
+    } catch (err) {
+      error(err instanceof Error ? err.message : 'Não foi possível consultar o agendamento.');
+    } finally {
+      setIsSearching(false);
+    }
   };
 
   const getStatusBadge = (status: Appointment['status']) => {
@@ -90,7 +93,7 @@ export const QuickSearchModal: React.FC<QuickSearchModalProps> = ({ isOpen, onCl
         {/* Body */}
         <div className="p-6 sm:p-8 overflow-y-auto flex-1 bg-neutral-50/50">
           <form onSubmit={handleSearch} className="mb-6">
-            <div className="flex gap-2">
+            <div className="grid gap-2 sm:grid-cols-[1fr_auto]">
               <div className="relative flex-grow">
                 <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 text-neutral-400" size={18} />
                 <input 
@@ -98,15 +101,16 @@ export const QuickSearchModal: React.FC<QuickSearchModalProps> = ({ isOpen, onCl
                   required
                   value={query}
                   onChange={e => setQuery(e.target.value)}
-                  placeholder={qs.placeholder}
+                  placeholder={t.appointments.trackerPlaceholder}
                   className="w-full pl-11 pr-4 py-3.5 bg-white border border-neutral-300 rounded-xl text-neutral-900 text-sm focus:outline-none focus:ring-2 focus:ring-primary-500 shadow-xs"
                 />
               </div>
-              <button
-                type="submit"
-                className="btn btn-primary px-5 py-3.5 text-xs sm:text-sm font-bold shrink-0 shadow-md"
-              >
-                {qs.btnSearch}
+                <button
+                  type="submit"
+                  disabled={isSearching}
+                  className="btn btn-primary px-5 py-3.5 text-xs sm:text-sm font-bold shrink-0 shadow-md disabled:opacity-50"
+                >
+                  {isSearching ? 'A consultar...' : qs.btnSearch}
               </button>
             </div>
           </form>
@@ -119,7 +123,7 @@ export const QuickSearchModal: React.FC<QuickSearchModalProps> = ({ isOpen, onCl
                     {qs.resultsTitle} ({results.length})
                   </span>
                   {results.map((apt) => (
-                    <div key={apt.id} className="bg-white p-5 rounded-xl border border-neutral-200 shadow-sm space-y-3">
+                    <div key={apt.protocolNumber} className="bg-white p-5 rounded-xl border border-neutral-200 shadow-sm space-y-3">
                       <div className="flex flex-wrap items-center justify-between gap-2 pb-3 border-b border-neutral-100">
                         <span className="font-mono font-black text-primary-950 text-sm bg-primary-50 px-2.5 py-1 rounded-lg border border-primary-200">
                           {apt.protocolNumber}
@@ -129,10 +133,6 @@ export const QuickSearchModal: React.FC<QuickSearchModalProps> = ({ isOpen, onCl
 
                       <div className="grid sm:grid-cols-2 gap-3 text-xs sm:text-sm">
                         <div>
-                          <span className="text-neutral-400 block text-[11px] uppercase font-semibold">Requerente</span>
-                          <strong className="text-primary-950">{apt.fullName}</strong>
-                        </div>
-                        <div>
                           <span className="text-neutral-400 block text-[11px] uppercase font-semibold">Serviço Solicitado</span>
                           <span className="text-neutral-800 font-medium">{apt.serviceName}</span>
                         </div>
@@ -141,10 +141,6 @@ export const QuickSearchModal: React.FC<QuickSearchModalProps> = ({ isOpen, onCl
                           <span className="text-neutral-800 flex items-center gap-1 font-mono">
                             <Calendar size={13} className="text-primary-700" /> {apt.date} às {apt.time}
                           </span>
-                        </div>
-                        <div>
-                          <span className="text-neutral-400 block text-[11px] uppercase font-semibold">Contacto</span>
-                          <span className="text-neutral-800 font-mono">{apt.phone}</span>
                         </div>
                       </div>
                     </div>

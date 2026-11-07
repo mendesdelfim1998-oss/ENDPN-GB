@@ -58,6 +58,7 @@ export function AdminPage() {
   const [activeTab, setActiveTab] = useState<'agendamentos' | 'desenvolvedor'>(initialTab);
   
   const [appointments, setAppointments] = useState<Appointment[]>([]);
+  const [currentUser, setCurrentUser] = useState<ReturnType<typeof authService.getCurrentUser>>(null);
   const [filterStatus, setFilterStatus] = useState<string>('todos');
   const [searchTerm, setSearchTerm] = useState('');
   const [stats, setStats] = useState(getStatsMetrics());
@@ -74,17 +75,27 @@ export function AdminPage() {
   const [isPublishing, setIsPublishing] = useState(false);
 
   useEffect(() => {
-    if (!authService.isAuthenticated()) {
-      navigate('/login');
-      return;
-    }
-    loadData();
-    getSiteVisitorCount()
-      .then(visitors => setStats(current => ({ ...current, visitors })))
-      .catch(err => {
-        console.error('Could not load global visitor count:', err);
-        error(err.message || 'Não foi possível carregar o contador global.');
-      });
+    const verifySessionAndLoad = async () => {
+      try {
+        const user = await authService.getVerifiedCurrentUser();
+        if (!user) {
+          navigate('/login');
+          return;
+        }
+        setCurrentUser(user);
+        if (user.role !== 'admin' && initialTab === 'desenvolvedor') {
+          setActiveTab('agendamentos');
+          setSearchParams({});
+        }
+        await loadData();
+        const visitors = await getSiteVisitorCount();
+        setStats(current => ({ ...current, visitors }));
+      } catch (err) {
+        console.error('Could not load administrator panel:', err);
+        error(err instanceof Error ? err.message : 'Não foi possível carregar o painel.');
+      }
+    };
+    void verifySessionAndLoad();
     syncArticlesFromSupabase().catch(err => {
       console.error('Could not sync admin publications from Supabase:', err);
       error(err.message || 'Não foi possível carregar as publicações.');
@@ -101,8 +112,9 @@ export function AdminPage() {
     };
   }, [navigate]);
 
-  const loadData = () => {
-    setAppointments(getAppointments());
+  const loadData = async () => {
+    const loadedAppointments = await getAppointments();
+    setAppointments(loadedAppointments);
     setStats(getStatsMetrics());
     setCustomArticles(getCustomArticles());
   };
@@ -121,15 +133,33 @@ export function AdminPage() {
     }
   };
 
-  const handleStatusChange = (id: string, newStatus: Appointment['status']) => {
-    updateAppointmentStatus(id, newStatus);
-    loadData();
+  const handleStatusChange = async (id: string, newStatus: Appointment['status']) => {
+    try {
+      await updateAppointmentStatus(id, newStatus);
+      await loadData();
+      success('Estado do agendamento atualizado.');
+    } catch (err) {
+      error(err instanceof Error ? err.message : 'Não foi possível alterar o estado.');
+    }
   };
 
-  const handleDeleteAppointment = (id: string, name: string) => {
+  const handleReloadAppointments = async () => {
+    try {
+      await loadData();
+    } catch (err) {
+      error(err instanceof Error ? err.message : 'Não foi possível atualizar os agendamentos.');
+    }
+  };
+
+  const handleDeleteAppointment = async (id: string, name: string) => {
     if (confirm(`Tem a certeza que deseja remover o agendamento de "${name}"?`)) {
-      deleteAppointment(id);
-      loadData();
+      try {
+        await deleteAppointment(id);
+        await loadData();
+        success('Agendamento removido.');
+      } catch (err) {
+        error(err instanceof Error ? err.message : 'Não foi possível remover o agendamento.');
+      }
     }
   };
 
@@ -239,22 +269,22 @@ export function AdminPage() {
           </div>
 
           <div className="flex items-center gap-3 flex-wrap">
-            <button
+            {currentUser?.role === 'admin' && <button
               onClick={() => setShowPublishModal(true)}
               className="inline-flex items-center gap-1.5 bg-[#16845B] hover:bg-[#126b48] text-white px-3.5 py-1.5 rounded-lg text-xs font-bold transition-all shadow-sm"
             >
               <PlusCircle size={15} /> Publicar Evento / Notícia
-            </button>
+            </button>}
             <span className="hidden sm:inline-block text-xs bg-white/10 px-3 py-1.5 rounded-lg text-neutral-300">
-              Sessão: <strong className="text-white">Administrador</strong>
+              Sessão: <strong className="text-white">{currentUser?.role === 'admin' ? 'Administrador' : 'Secretaria'}</strong>
             </span>
-            <button
+            {currentUser?.role === 'admin' && <button
               onClick={handleExportCSV}
               className="inline-flex items-center gap-1.5 bg-accent-500 hover:bg-accent-400 text-neutral-950 px-3.5 py-1.5 rounded-lg text-xs font-bold transition-all shadow-sm"
               title="Exportar dados para Excel/CSV"
             >
               <Download size={14} /> Exportar CSV
-            </button>
+            </button>}
             <button
               onClick={handleLogout}
               className="inline-flex items-center gap-1.5 bg-flag-700 hover:bg-flag-800 text-white px-3.5 py-1.5 rounded-lg text-xs font-bold transition-all shadow-sm"
@@ -282,7 +312,7 @@ export function AdminPage() {
             <Calendar size={16} /> 📋 Agendamentos & Processos ({appointments.length})
           </button>
 
-          <button
+          {currentUser?.role === 'admin' && <button
             onClick={() => {
               setActiveTab('desenvolvedor');
               setSearchParams({ tab: 'dev' });
@@ -294,11 +324,11 @@ export function AdminPage() {
             }`}
           >
             <Wrench size={16} /> 🛠️ Área do Desenvolvedor & Gestor de Imagens
-          </button>
+          </button>}
         </div>
 
         {/* Tab 2: Developer & Image Manager */}
-        {activeTab === 'desenvolvedor' && (
+        {activeTab === 'desenvolvedor' && currentUser?.role === 'admin' && (
           <div className="mb-12">
             <DeveloperImageManager />
           </div>
@@ -334,7 +364,7 @@ export function AdminPage() {
             <div className="text-2xl font-black text-neutral-800">{stats.visitors}</div>
             <div className="flex items-center justify-between gap-2 mt-1">
               <span className="text-[11px] text-neutral-400 font-semibold">Visitantes únicos</span>
-              <button
+              {currentUser?.role === 'admin' && <button
                 type="button"
                 onClick={handleResetVisitors}
                 disabled={isResettingVisitors}
@@ -342,13 +372,13 @@ export function AdminPage() {
               >
                 <RotateCcw size={12} />
                 {isResettingVisitors ? 'A repor…' : 'Repor a zero'}
-              </button>
+              </button>}
             </div>
           </div>
         </div>
 
         {/* Published announcements management section if any */}
-        {customArticles.length > 0 && (
+        {currentUser?.role === 'admin' && customArticles.length > 0 && (
           <div className="mb-8 bg-white p-6 rounded-xl border border-neutral-200 shadow-sm">
             <div className="flex items-center justify-between mb-4 pb-2 border-b border-neutral-100">
               <div className="flex items-center gap-2">
@@ -410,7 +440,7 @@ export function AdminPage() {
               <option value="cancelado">Cancelados</option>
             </select>
             <button
-              onClick={loadData}
+              onClick={() => void handleReloadAppointments()}
               className="p-2 text-neutral-500 hover:text-primary-700 hover:bg-neutral-100 rounded-lg transition-colors"
               title="Recarregar"
             >
@@ -474,9 +504,9 @@ export function AdminPage() {
                         </span>
                       </td>
                       <td className="py-3.5 px-4 whitespace-nowrap">
-                        <select
+                        {currentUser?.role === 'admin' ? <select
                           value={apt.status}
-                          onChange={e => handleStatusChange(apt.id, e.target.value as Appointment['status'])}
+                          onChange={e => void handleStatusChange(apt.id, e.target.value as Appointment['status'])}
                           className={`text-[11px] font-extrabold uppercase rounded-lg px-2.5 py-1 border focus:outline-none cursor-pointer ${
                             apt.status === 'confirmado'
                               ? 'bg-success-50 text-success-700 border-success-200'
@@ -491,7 +521,7 @@ export function AdminPage() {
                           <option value="pendente">Pendente</option>
                           <option value="concluido">Concluído</option>
                           <option value="cancelado">Cancelado</option>
-                        </select>
+                        </select> : <span className="text-[11px] font-extrabold uppercase rounded-lg px-2.5 py-1 border bg-neutral-50 text-neutral-700 border-neutral-200">{apt.status}</span>}
                       </td>
                       <td className="py-3.5 px-4 text-right whitespace-nowrap">
                         <div className="inline-flex items-center gap-1.5">
@@ -504,13 +534,13 @@ export function AdminPage() {
                           >
                             <Phone size={15} />
                           </a>
-                          <button
+                          {currentUser?.role === 'admin' && <button
                             onClick={() => handleDeleteAppointment(apt.id, apt.fullName)}
                             className="p-1.5 text-red-600 hover:bg-red-50 rounded-md transition-colors"
                             title="Remover agendamento"
                           >
                             <Trash2 size={15} />
-                          </button>
+                          </button>}
                         </div>
                       </td>
                     </tr>
@@ -577,7 +607,7 @@ export function AdminPage() {
                     </label>
                     <input 
                       type="file"
-                      accept="image/*"
+                      accept="image/jpeg,image/png,image/webp"
                       onChange={async (e) => {
                         const file = e.target.files?.[0];
                         if (file) {
@@ -585,8 +615,8 @@ export function AdminPage() {
                             const dataUrl = await processImageFile(file, 800, 600, 0.85);
                             setNewImageUrl(dataUrl);
                             success('Foto carregada do computador com sucesso!');
-                          } catch {
-                            error('Erro ao ler imagem do computador.');
+                          } catch (err) {
+                            error(err instanceof Error ? err.message : 'Erro ao processar imagem. Selecione JPG, PNG ou WEBP.');
                           }
                         }
                       }}

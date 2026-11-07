@@ -17,7 +17,7 @@ import { processImageFile } from '../services/imageService';
 
 export function News() {
   const { t, language } = useLanguage();
-  const isAuthenticated = authService.isAuthenticated();
+  const isAuthenticated = authService.isAdmin();
   const { success, error } = useToast();
 
   const [customArticles, setCustomArticles] = useState<ArticleItem[]>(getCustomArticles());

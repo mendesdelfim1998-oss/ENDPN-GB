@@ -1,5 +1,6 @@
 import { supabase } from '../lib/supabase';
 import { authService } from './authService';
+import { ServiceFeeOverrides } from './serviceFeeService';
 
 export interface Appointment {
   id: string;
@@ -141,9 +142,12 @@ export function getLocalizedUniversalCountries(lang: string = 'pt') {
   return UNIVERSAL_COUNTRIES;
 }
 
-export function getLocalizedOfficialServices(t?: any) {
+export function getLocalizedOfficialServices(t?: any, feeOverrides: ServiceFeeOverrides = {}) {
   if (!t || !t.appointments || !t.appointments.services) {
-    return OFFICIAL_SERVICES;
+    return OFFICIAL_SERVICES.map(service => ({
+      ...service,
+      fee: feeOverrides[service.id] || service.fee
+    }));
   }
   const s = t.appointments.services;
   return [
@@ -211,10 +215,12 @@ export function getLocalizedOfficialServices(t?: any) {
       timeEstimate: s.birthCertificate.estimate,
       category: s.birthCertificate.category
     }
-  ];
+  ].map(service => ({
+    ...service,
+    fee: feeOverrides[service.id] || service.fee
+  }));
 }
 
-const STORAGE_KEY = 'emdpn_appointments';
 const VISITOR_ID_KEY = 'emdpn_visitor_id';
 const VISITOR_COUNT_KEY = 'emdpn_visitor_count';
 
@@ -372,62 +378,142 @@ const INITIAL_SEED_APPOINTMENTS: Appointment[] = [
   }
 ];
 
-export function getAppointments(): Appointment[] {
-  try {
-    const raw = localStorage.getItem(STORAGE_KEY);
-    if (!raw) {
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(INITIAL_SEED_APPOINTMENTS));
-      return INITIAL_SEED_APPOINTMENTS;
-    }
-    return JSON.parse(raw);
-  } catch (e) {
-    console.error('Error reading appointments from localStorage', e);
-    return INITIAL_SEED_APPOINTMENTS;
-  }
-}
-
-export function saveAppointment(
-  data: Omit<Appointment, 'id' | 'protocolNumber' | 'createdAt' | 'status'>
-): Appointment {
-  const appointments = getAppointments();
-  const randomSuffix = Math.floor(1000 + Math.random() * 9000);
-  const protocolNumber = `EMDPN-2026-${randomSuffix}`;
-  
-  const newAppointment: Appointment = {
-    ...data,
-    id: `apt-${Date.now()}`,
-    protocolNumber,
-    status: 'confirmado',
-    createdAt: new Date().toISOString().replace('T', ' ').substring(0, 16)
+function mapAppointment(row: Record<string, unknown>): Appointment {
+  return {
+    id: String(row.id),
+    protocolNumber: String(row.protocol_number),
+    serviceType: String(row.service_type),
+    serviceName: String(row.service_name),
+    officialFee: String(row.official_fee),
+    modality: row.modality === 'online' ? 'online' : 'presencial',
+    date: String(row.date),
+    time: String(row.time),
+    fullName: String(row.full_name),
+    email: String(row.email || ''),
+    phone: String(row.phone),
+    documentNumber: String(row.document_number || ''),
+    countryOfResidence: String(row.country_of_residence || ''),
+    countryCode: typeof row.country_code === 'string' ? row.country_code : undefined,
+    preferredChannel: typeof row.preferred_channel === 'string' ? row.preferred_channel : undefined,
+    notes: typeof row.notes === 'string' ? row.notes : undefined,
+    status: row.status as Appointment['status'],
+    createdAt: String(row.created_at)
   };
-
-  const updated = [newAppointment, ...appointments];
-  localStorage.setItem(STORAGE_KEY, JSON.stringify(updated));
-  return newAppointment;
 }
 
-export function findAppointmentByProtocol(query: string): Appointment | undefined {
-  const clean = query.trim().toUpperCase();
-  const phoneClean = query.replace(/\D/g, '');
-  const appointments = getAppointments();
+export type AppointmentTrackingResult = Pick<
+  Appointment,
+  'protocolNumber' | 'serviceName' | 'officialFee' | 'modality' | 'date' | 'time' | 'status'
+>;
 
-  return appointments.find(a => 
-    a.protocolNumber.toUpperCase() === clean ||
-    (phoneClean.length >= 6 && a.phone.replace(/\D/g, '').includes(phoneClean)) ||
-    a.documentNumber.toUpperCase() === clean
-  );
+export async function getAppointments(): Promise<Appointment[]> {
+  if (!authService.isAuthenticated()) {
+    throw new Error('Inicie sessão para consultar os agendamentos.');
+  }
+  const { data, error } = await supabase
+    .from('appointments')
+    .select('*')
+    .order('created_at', { ascending: false });
+  if (error) {
+    console.error('Could not load cloud appointments:', error);
+    throw new Error('Não foi possível carregar os agendamentos da nuvem.');
+  }
+  return data.map(row => mapAppointment(row));
 }
 
-export function updateAppointmentStatus(id: string, status: Appointment['status']): void {
-  const appointments = getAppointments();
-  const updated = appointments.map(a => (a.id === id ? { ...a, status } : a));
-  localStorage.setItem(STORAGE_KEY, JSON.stringify(updated));
+export async function saveAppointment(
+  data: Omit<Appointment, 'id' | 'protocolNumber' | 'createdAt' | 'status'>
+): Promise<Appointment> {
+  const { data: rows, error } = await supabase.rpc('submit_appointment', {
+    p_service_type: data.serviceType,
+    p_service_name: data.serviceName,
+    p_official_fee: data.officialFee,
+    p_modality: data.modality,
+    p_date: data.date,
+    p_time: data.time,
+    p_full_name: data.fullName.trim(),
+    p_email: data.email.trim() || null,
+    p_phone: data.phone.trim(),
+    p_document_number: data.documentNumber.trim() || null,
+    p_country_of_residence: data.countryOfResidence,
+    p_country_code: data.countryCode || null,
+    p_preferred_channel: data.preferredChannel || null,
+    p_notes: data.notes?.trim() || null
+  });
+
+  if (error) {
+    console.error('Could not save appointment to Supabase:', error);
+    throw new Error('Não foi possível guardar o agendamento na nuvem. Tente novamente.');
+  }
+  const created = rows?.[0];
+  if (!created) {
+    throw new Error('O agendamento não foi confirmado pela nuvem. Tente novamente.');
+  }
+  return {
+    ...data,
+    id: created.id,
+    protocolNumber: created.protocol_number,
+    createdAt: created.created_at,
+    status: 'pendente'
+  };
 }
 
-export function deleteAppointment(id: string): void {
-  const appointments = getAppointments();
-  const updated = appointments.filter(a => a.id !== id);
-  localStorage.setItem(STORAGE_KEY, JSON.stringify(updated));
+export async function findAppointmentByProtocol(query: string): Promise<AppointmentTrackingResult[]> {
+  const cleanQuery = query.trim();
+  if (!cleanQuery) return [];
+  const { data, error } = await supabase.rpc('track_appointment', {
+    p_lookup: cleanQuery
+  });
+  if (error) {
+    console.error('Could not track cloud appointment:', error);
+    throw new Error('Não foi possível consultar o estado do agendamento.');
+  }
+  return (data || []).map((row: {
+    protocol_number: string;
+    service_name: string;
+    official_fee: string;
+    modality: Appointment['modality'];
+    date: string;
+    time: string;
+    status: Appointment['status'];
+  }) => ({
+    protocolNumber: row.protocol_number,
+    serviceName: row.service_name,
+    officialFee: row.official_fee,
+    modality: row.modality,
+    date: row.date,
+    time: row.time,
+    status: row.status
+  }));
+}
+
+export async function updateAppointmentStatus(id: string, status: Appointment['status']): Promise<void> {
+  if (!authService.isAdmin()) {
+    throw new Error('Apenas um administrador pode alterar o estado dos agendamentos.');
+  }
+  const { data, error } = await supabase
+    .from('appointments')
+    .update({ status })
+    .eq('id', id)
+    .select('id')
+    .maybeSingle();
+  if (error) {
+    console.error('Could not update appointment status:', error);
+    throw new Error('Não foi possível alterar o estado. Verifique a permissão de administrador.');
+  }
+  if (!data) throw new Error('O agendamento não foi encontrado ou não pode ser alterado.');
+}
+
+export async function deleteAppointment(id: string): Promise<void> {
+  if (!authService.isAdmin()) {
+    throw new Error('Apenas um administrador pode remover agendamentos.');
+  }
+  const { data, error } = await supabase.from('appointments').delete().eq('id', id).select('id').maybeSingle();
+  if (error) {
+    console.error('Could not delete cloud appointment:', error);
+    throw new Error('Não foi possível remover o agendamento.');
+  }
+  if (!data) throw new Error('O agendamento não foi encontrado ou não pode ser removido.');
 }
 
 export function getStatsMetrics() {
@@ -438,15 +524,11 @@ export function getStatsMetrics() {
     console.error('Could not read cached visitor count:', err);
   }
 
-  const appointments = getAppointments();
-  const totalBeneficiaries = 520 + appointments.filter(a => a.status === 'concluido').length;
-  const totalInterested = 1350 + appointments.length;
-
   return {
     visitors,
-    beneficiaries: totalBeneficiaries,
-    interested: totalInterested,
-    totalAppointments: appointments.length
+    beneficiaries: 520,
+    interested: 1350,
+    totalAppointments: 0
   };
 }
 
@@ -484,7 +566,7 @@ export async function getSiteVisitorCount(): Promise<number> {
 }
 
 export async function resetSiteVisitorCount(): Promise<number> {
-  if (!authService.isAuthenticated()) {
+  if (!authService.isAdmin()) {
     throw new Error('Inicie sessão como administrador para reiniciar o contador.');
   }
   const { data, error } = await supabase.rpc('reset_site_visitors');

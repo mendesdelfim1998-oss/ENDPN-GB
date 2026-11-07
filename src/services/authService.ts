@@ -6,7 +6,7 @@ const AUTH_KEY = 'emdpn_verified_admin';
 export interface AdminUser {
   email: string;
   name: string;
-  role: string;
+  role: 'admin' | 'secretaria';
 }
 
 export const authService = {
@@ -21,18 +21,19 @@ export const authService = {
       return { success: false, error: 'E-mail ou palavra-passe incorretos.' };
     }
 
-    if (data.user.app_metadata.role !== 'admin') {
+    const role = data.user.app_metadata.role;
+    if (role !== 'admin' && role !== 'secretaria') {
       await supabase.auth.signOut();
       return {
         success: false,
-        error: 'Esta conta não tem permissões de administrador. Contacte o responsável pelo Supabase.'
+        error: 'Esta conta não tem permissões de acesso ao painel. Contacte um administrador.'
       };
     }
 
     const user: AdminUser = {
       email: data.user.email || email.trim(),
       name: data.user.user_metadata.name || 'Administrador EMDPN-GB',
-      role: 'admin'
+      role
     };
     localStorage.setItem(AUTH_KEY, JSON.stringify(user));
     return { success: true };
@@ -69,12 +70,12 @@ export const authService = {
   },
 
   async createAdminAccount(email: string, password: string): Promise<void> {
-    if (!this.isAuthenticated()) {
+    if (!this.isAdmin()) {
       throw new Error('Inicie sessão como administrador para criar contas.');
     }
 
     const { error } = await supabase.functions.invoke('clever-function', {
-      body: { email: email.trim(), password }
+      body: { email: email.trim(), password, role: 'admin' }
     });
     if (error) {
       let message = error.message;
@@ -94,11 +95,41 @@ export const authService = {
     }
   },
 
+  async createStaffAccount(
+    email: string,
+    password: string,
+    role: AdminUser['role']
+  ): Promise<void> {
+    if (!this.isAdmin()) {
+      throw new Error('Inicie sessão como administrador para criar contas.');
+    }
+
+    const { error } = await supabase.functions.invoke('clever-function', {
+      body: { email: email.trim(), password, role }
+    });
+    if (error) {
+      let message = error.message;
+      if (error instanceof FunctionsHttpError && error.context instanceof Response) {
+        const responseBody: unknown = await error.context.clone().json().catch(() => null);
+        if (
+          responseBody &&
+          typeof responseBody === 'object' &&
+          'error' in responseBody &&
+          typeof responseBody.error === 'string'
+        ) {
+          message = responseBody.error;
+        }
+      }
+      console.error('Could not create staff account:', error);
+      throw new Error(message || 'Não foi possível criar a conta.');
+    }
+  },
+
   getCurrentUser(): AdminUser | null {
     try {
       const raw = localStorage.getItem(AUTH_KEY);
       const user: AdminUser | null = raw ? JSON.parse(raw) : null;
-      return user?.role === 'admin' ? user : null;
+      return user && (user.role === 'admin' || user.role === 'secretaria') ? user : null;
     } catch (error) {
       console.error('Could not read administrator session:', error);
       return null;
@@ -107,5 +138,32 @@ export const authService = {
 
   isAuthenticated(): boolean {
     return this.getCurrentUser() !== null;
+  },
+
+  isAdmin(): boolean {
+    return this.getCurrentUser()?.role === 'admin';
+  },
+
+  async getVerifiedCurrentUser(): Promise<AdminUser | null> {
+    const { data, error } = await supabase.auth.getUser();
+    if (error) {
+      localStorage.removeItem(AUTH_KEY);
+      console.error('Could not verify staff session:', error);
+      throw new Error('Não foi possível confirmar a sessão. Inicie sessão novamente.');
+    }
+
+    const role = data.user?.app_metadata.role;
+    if (!data.user || (role !== 'admin' && role !== 'secretaria')) {
+      localStorage.removeItem(AUTH_KEY);
+      return null;
+    }
+
+    const user: AdminUser = {
+      email: data.user.email || '',
+      name: data.user.user_metadata.name || (role === 'admin' ? 'Administrador EMDPN-GB' : 'Secretaria EMDPN-GB'),
+      role
+    };
+    localStorage.setItem(AUTH_KEY, JSON.stringify(user));
+    return user;
   }
 };

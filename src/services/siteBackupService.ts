@@ -9,7 +9,7 @@ export interface SiteBackup {
 }
 
 function requireAdmin(): void {
-  if (!authService.isAuthenticated()) {
+  if (!authService.isAdmin()) {
     throw new Error('Inicie sessão como administrador para gerir os pontos de restauro.');
   }
 }
@@ -42,5 +42,14 @@ export async function restoreSiteBackup(id: string): Promise<void> {
   if (error) {
     console.error('Could not restore site content backup:', error);
     throw new Error('Não foi possível restaurar este ponto de restauro.');
+  }
+}
+
+export async function deleteSiteBackup(id: string): Promise<void> {
+  requireAdmin();
+  const { error } = await supabase.rpc('delete_site_backup', { p_backup_id: id });
+  if (error) {
+    console.error('Could not delete site content backup:', error);
+    throw new Error('Não foi possível apagar este ponto de restauro.');
   }
 }

@@ -21,8 +21,9 @@ import {
   getLocalizedUniversalCountries, 
   OFFICIAL_EMAILS_MAILTO,
   saveAppointment, 
-  Appointment 
+  Appointment
 } from '../services/appointmentService';
+import { ServiceFeeOverrides } from '../services/serviceFeeService';
 import { 
   sendAppointmentConfirmationEmail, 
   createMailtoBackupLink 
@@ -32,16 +33,17 @@ import { useLanguage } from '../context/LanguageContext';
 
 interface Props {
   initialServiceId?: string;
+  feeOverrides?: ServiceFeeOverrides;
   onSuccess?: (appointment: Appointment) => void;
   onClose?: () => void;
 }
 
-export function AppointmentBookingModal({ initialServiceId, onSuccess }: Props) {
+export function AppointmentBookingModal({ initialServiceId, feeOverrides, onSuccess }: Props) {
   const { showToast, success, error } = useToast();
   const { t, language } = useLanguage();
   const apt = t.appointments;
 
-  const servicesList = getLocalizedOfficialServices(t);
+  const servicesList = getLocalizedOfficialServices(t, feeOverrides);
   const universalCountries = getLocalizedUniversalCountries(language);
 
   const [step, setStep] = useState(1);
@@ -111,7 +113,8 @@ export function AppointmentBookingModal({ initialServiceId, onSuccess }: Props) 
       const officialFees = selectedServices.map(s => s.fee).join(', ');
       const serviceType = selectedServiceIds.join(',');
 
-      const created = saveAppointment({
+      try {
+        const created = await saveAppointment({
         serviceType: serviceType,
         serviceName: serviceNames,
         officialFee: officialFees,
@@ -126,7 +129,7 @@ export function AppointmentBookingModal({ initialServiceId, onSuccess }: Props) 
         countryCode: selectedCountryCode,
         preferredChannel,
         notes: formData.notes
-      });
+        });
 
       setCompletedAppointment(created);
       success(`${apt.toastSuccess}${created.protocolNumber}`);
@@ -146,7 +149,11 @@ export function AppointmentBookingModal({ initialServiceId, onSuccess }: Props) 
         console.error('Error dispatching confirmation email', e);
       }
 
-      setStep(4);
+        setStep(4);
+      } catch (e) {
+        console.error('Could not create cloud appointment:', e);
+        error(e instanceof Error ? e.message : 'Não foi possível guardar o agendamento. Tente novamente.');
+      }
     } else {
       setStep(s => s + 1);
     }
@@ -161,7 +168,7 @@ DE NATURALIZAÇÃO NA GUINÉ-BISSAU (EMDPN-GB)
 JUNTOS POR UM FUTURO MELHOR
 =============================================================
 
-COMPROVATIVO OFICIAL DE AGENDAMENTO UNIVERSAL
+COMPROVATIVO DO PEDIDO DE AGENDAMENTO
 
 Nº DE PROTOCOLO: ${completedAppointment.protocolNumber}
 DATA DE REGISTO: ${completedAppointment.createdAt}
@@ -610,12 +617,12 @@ EMDPN-GB - Atuação estritamente dentro da Lei.
                 <div>
                   <span className="text-xs font-bold text-emerald-950 block">
                     {language === 'fr'
-                      ? 'E-mail de confirmation automatique envoyé'
+                      ? 'E-mail automatique de réception de la demande envoyé'
                       : language === 'en'
-                      ? 'Automatic Confirmation Email Dispatched'
+                      ? 'Automatic request receipt email sent'
                       : language === 'es'
-                      ? 'Correo de confirmación automático enviado'
-                      : 'E-mail de Confirmação Automático Enviado'}
+                      ? 'Correo automático de recepción de solicitud enviado'
+                      : 'E-mail automático de receção do pedido enviado'}
                   </span>
                   <span className="text-[11px] text-emerald-700 block">
                     {emailRecipientAddress || completedAppointment.email 

@@ -1,6 +1,6 @@
 import { supabase } from '../lib/supabase';
 import { authService } from './authService';
-import { uploadImageToStorage } from './imageService';
+import { getImageStorageUsage, uploadImageToStorage } from './imageService';
 import { createSiteBackup } from './siteBackupService';
 
 export interface ArticleItem {
@@ -73,7 +73,7 @@ export async function syncArticlesFromSupabase(): Promise<ArticleItem[]> {
 }
 
 export async function saveArticle(article: Omit<ArticleItem, 'id'> & { id?: string }): Promise<ArticleItem> {
-  if (!authService.isAuthenticated()) {
+  if (!authService.isAdmin()) {
     throw new Error('Inicie sessão como administrador para publicar.');
   }
 
@@ -81,6 +81,10 @@ export async function saveArticle(article: Omit<ArticleItem, 'id'> & { id?: stri
     ...article,
     id: article.id || `article-${crypto.randomUUID()}`
   };
+  const imageStorage = await getImageStorageUsage();
+  if (imageStorage.remainingBytes <= 0) {
+    throw new Error('O armazenamento de imagens está cheio. Remova conteúdo sem uso antes de publicar.');
+  }
   if (savedArticle.imageUrl?.startsWith('data:image/')) {
     savedArticle.imageUrl = await uploadImageToStorage(savedArticle.imageUrl);
   }
@@ -106,7 +110,7 @@ export async function saveArticle(article: Omit<ArticleItem, 'id'> & { id?: stri
 }
 
 export async function deleteArticle(id: string): Promise<boolean> {
-  if (!authService.isAuthenticated()) {
+  if (!authService.isAdmin()) {
     throw new Error('Acesso negado: somente o administrador autenticado pode apagar publicações.');
   }
 
@@ -122,7 +126,7 @@ export async function deleteArticle(id: string): Promise<boolean> {
 }
 
 export async function clearAllArticles(): Promise<boolean> {
-  if (!authService.isAuthenticated()) {
+  if (!authService.isAdmin()) {
     throw new Error('Acesso negado: somente o administrador autenticado pode limpar publicações.');
   }
 

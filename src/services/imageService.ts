@@ -17,6 +17,8 @@ type SyncedImageKey = 'heroBanner' | 'aboutOffice' | 'audienceShowcase';
 const STORAGE_KEY = 'emdpn_custom_images';
 const EVENT_KEY = 'emdpn_images_updated';
 const IMAGE_BUCKET = 'site-images';
+export const MAX_IMAGE_STORAGE_BYTES = 100 * 1024 * 1024;
+const MAX_IMAGE_FILE_BYTES = 5 * 1024 * 1024;
 
 export const DEFAULT_IMAGES = {
   heroBanner: '/assets/aistudio/WhatsApp_Image_2026-10-25_at_15.30.49_236398bc.jpeg',
@@ -35,7 +37,7 @@ function updateImageCache(images: CustomImagesState): void {
 }
 
 function requireAdmin(): void {
-  if (!authService.isAuthenticated()) {
+  if (!authService.isAdmin()) {
     throw new Error('Inicie sessão como administrador para alterar as imagens.');
   }
 }
@@ -53,6 +55,13 @@ export async function uploadImageToStorage(dataUrl: string): Promise<string> {
 
   const response = await fetch(dataUrl);
   const blob = await response.blob();
+  if (!['image/png', 'image/jpeg', 'image/webp'].includes(blob.type) || blob.size > MAX_IMAGE_FILE_BYTES) {
+    throw new Error('A imagem comprimida deve ser JPG, PNG ou WEBP e ter no máximo 5 MB.');
+  }
+  const usage = await getImageStorageUsage();
+  if (usage.usedBytes + blob.size > usage.limitBytes) {
+    throw new Error(`O armazenamento de imagens está cheio. Remova imagens sem uso para libertar espaço.`);
+  }
   const extension = blob.type === 'image/png' ? 'png' : blob.type === 'image/webp' ? 'webp' : 'jpg';
   const path = `${crypto.randomUUID()}.${extension}`;
   const { error } = await supabase.storage
@@ -65,6 +74,114 @@ export async function uploadImageToStorage(dataUrl: string): Promise<string> {
   }
 
   return supabase.storage.from(IMAGE_BUCKET).getPublicUrl(path).data.publicUrl;
+}
+
+export interface ImageStorageUsage {
+  usedBytes: number;
+  limitBytes: number;
+  remainingBytes: number;
+  fileCount: number;
+}
+
+async function listStoredImages(): Promise<Array<{ name: string; size: number }>> {
+  requireAdmin();
+  const images: Array<{ name: string; size: number }> = [];
+  for (let offset = 0; ; offset += 1000) {
+    const { data, error } = await supabase.storage.from(IMAGE_BUCKET).list('', {
+      limit: 1000,
+      offset,
+      sortBy: { column: 'name', order: 'asc' }
+    });
+    if (error) {
+      console.error('Could not list shared images in storage:', error);
+      throw new Error('Não foi possível consultar o armazenamento de imagens.');
+    }
+    images.push(...data
+      .filter(file => file.id !== null)
+      .map(file => ({ name: file.name, size: Number(file.metadata?.size) || 0 })));
+    if (data.length < 1000) return images;
+  }
+}
+
+export async function getImageStorageUsage(): Promise<ImageStorageUsage> {
+  const files = await listStoredImages();
+  const usedBytes = files.reduce((total, file) => total + file.size, 0);
+  return {
+    usedBytes,
+    limitBytes: MAX_IMAGE_STORAGE_BYTES,
+    remainingBytes: Math.max(0, MAX_IMAGE_STORAGE_BYTES - usedBytes),
+    fileCount: files.length
+  };
+}
+
+function collectImageUrls(value: unknown, urls: Set<string>): void {
+  if (typeof value === 'string') {
+    const trimmed = value.trim();
+    if (trimmed.startsWith('{') || trimmed.startsWith('[') || trimmed.startsWith('"')) {
+      try {
+        collectImageUrls(JSON.parse(trimmed) as unknown, urls);
+        return;
+      } catch (err) {
+        console.error('Could not parse a stored image reference:', err);
+        throw new Error('Não foi possível verificar todas as referências de imagens.');
+      }
+    }
+    if (value.includes(`/object/public/${IMAGE_BUCKET}/`)) urls.add(value);
+    return;
+  }
+  if (Array.isArray(value)) {
+    value.forEach(item => collectImageUrls(item, urls));
+    return;
+  }
+  if (value && typeof value === 'object') {
+    Object.values(value).forEach(item => collectImageUrls(item, urls));
+  }
+}
+
+function getStoredImagePath(url: string): string | null {
+  const marker = `/object/public/${IMAGE_BUCKET}/`;
+  const index = url.indexOf(marker);
+  if (index < 0) return null;
+  const path = url.slice(index + marker.length).split(/[?#]/, 1)[0];
+  return decodeURIComponent(path);
+}
+
+export async function deleteUnusedStoredImages(): Promise<number> {
+  requireAdmin();
+  const [filesResult, settingsResult, articlesResult, backupsResult] = await Promise.all([
+    listStoredImages(),
+    supabase.from('site_settings').select('value'),
+    supabase.from('articles').select('image_url'),
+    supabase.from('site_backups').select('articles, site_settings')
+  ]);
+  if (settingsResult.error || articlesResult.error || backupsResult.error) {
+    const error = settingsResult.error || articlesResult.error || backupsResult.error;
+    console.error('Could not determine image references before cleanup:', error);
+    throw new Error('Não foi possível verificar as imagens em uso e os pontos de restauro.');
+  }
+
+  const referencedUrls = new Set<string>();
+  settingsResult.data.forEach(row => collectImageUrls(row.value, referencedUrls));
+  articlesResult.data.forEach(row => collectImageUrls(row.image_url, referencedUrls));
+  backupsResult.data.forEach(row => {
+    collectImageUrls(row.articles, referencedUrls);
+    collectImageUrls(row.site_settings, referencedUrls);
+  });
+  const referencedPaths = new Set(
+    Array.from(referencedUrls, getStoredImagePath).filter((path): path is string => path !== null)
+  );
+  const unusedPaths = filesResult
+    .map(file => file.name)
+    .filter(path => !referencedPaths.has(path));
+
+  for (let index = 0; index < unusedPaths.length; index += 100) {
+    const { error } = await supabase.storage.from(IMAGE_BUCKET).remove(unusedPaths.slice(index, index + 100));
+    if (error) {
+      console.error('Could not remove unused images from storage:', error);
+      throw new Error('Não foi possível remover todas as imagens sem uso.');
+    }
+  }
+  return unusedPaths.length;
 }
 
 async function saveSetting(key: string, value: string): Promise<void> {
@@ -229,8 +346,8 @@ export async function resetAllImages(): Promise<void> {
 
 export function processImageFile(file: File, maxWidth: number = 1200, maxHeight: number = 900, quality: number = 0.85): Promise<string> {
   return new Promise((resolve, reject) => {
-    if (!file.type.startsWith('image/')) {
-      reject(new Error('O ficheiro selecionado não é uma imagem válida.'));
+    if (!['image/jpeg', 'image/png', 'image/webp'].includes(file.type)) {
+      reject(new Error('Selecione uma imagem JPG, PNG ou WEBP. Vídeos e outros formatos não são aceites.'));
       return;
     }
 
@@ -261,8 +378,13 @@ export function processImageFile(file: File, maxWidth: number = 1200, maxHeight:
           return;
         }
         context.drawImage(img, 0, 0, width, height);
-        const format = file.type === 'image/png' ? 'image/png' : 'image/jpeg';
-        resolve(canvas.toDataURL(format, quality));
+        const compressedImage = canvas.toDataURL('image/webp', quality);
+        const sizeBytes = Math.ceil((compressedImage.length - 'data:image/webp;base64,'.length) * 0.75);
+        if (sizeBytes > MAX_IMAGE_FILE_BYTES) {
+          reject(new Error('A imagem continua acima de 5 MB após a compressão. Escolha uma imagem menor.'));
+          return;
+        }
+        resolve(compressedImage);
       };
       img.src = event.target?.result as string;
     };

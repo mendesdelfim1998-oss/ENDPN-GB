@@ -47,7 +47,7 @@ Se o site usar outro projeto Supabase, configure `VITE_SUPABASE_URL` e `VITE_SUP
 
 ### Contador de visitantes, contas e pontos de restauro
 
-Para atualizar um projeto Supabase já configurado, execute `supabase_migration.sql` no SQL Editor. O script acrescenta o contador global, que regista identificadores aleatórios persistentes por navegador (visitantes únicos por navegador, não pessoas identificadas), e os pontos de restauro das publicações e definições de imagem. Os dados de agendamento e dos requerentes não são incluídos nos restauros.
+Para atualizar um projeto Supabase já configurado, execute novamente `supabase_migration.sql` no SQL Editor. O script é repetível e acrescenta o contador global, os pontos de restauro, preços de serviço partilhados e a gestão de agendamentos. Administradores podem restaurar ou apagar pontos de restauro individuais e personalizar os preços da tabela de serviços; as alterações de preço também são usadas nos novos pedidos. Agendamentos novos começam como `pendente`; apenas contas `admin` podem mudar o estado ou remover registos. Contas `secretaria` podem consultar os agendamentos, mas não veem a área do desenvolvedor. O acompanhamento público aceita o protocolo ou o telefone registado no pedido e devolve apenas os dados básicos do atendimento. Os dados de requerentes não são incluídos nos pontos de restauro.
 
 Depois, publique a Edge Function `clever-function` que cria contas administrativas:
 
@@ -57,4 +57,4 @@ supabase functions deploy clever-function
 
 A função usa os segredos `SUPABASE_URL`, `SUPABASE_ANON_KEY` e `SUPABASE_SERVICE_ROLE_KEY` do ambiente Supabase; nunca os configure no frontend. Crie inicialmente uma conta no Supabase Auth e atribua-lhe `app_metadata.role = 'admin'` usando o procedimento acima. A partir da área autenticada do administrador, pode criar outras contas (incluindo `admin@emdpn.gw`) e alterar a própria palavra-passe. Cada conta deve ter uma palavra-passe individual com pelo menos 12 caracteres, maiúscula, minúscula, número e símbolo; não existe uma palavra-passe partilhada predefinida.
 
-O contador global pode ser reiniciado no painel administrativo. As publicações e imagens são copiadas automaticamente antes de cada alteração, e os pontos de restauro também podem ser criados ou restaurados no painel.
+O contador global pode ser reiniciado no painel administrativo. As publicações e imagens são copiadas automaticamente antes de cada alteração, e os pontos de restauro também podem ser criados ou restaurados no painel. O gestor mostra o uso do bucket `site-images` contra um limite interno de 100 MB, comprime imagens JPG/PNG/WEBP para WEBP antes do envio e oferece a remoção de ficheiros sem referências em publicações, definições e pontos de restauro. Vídeos e outros formatos não são aceites.
