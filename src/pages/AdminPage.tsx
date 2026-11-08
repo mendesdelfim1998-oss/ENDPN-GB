@@ -39,6 +39,8 @@ import { authService } from '../services/authService';
 import { useToast } from '../context/ToastContext';
 import { DeveloperImageManager } from '../components/DeveloperImageManager';
 import { processImageFile } from '../services/imageService';
+import { useLanguage } from '../context/LanguageContext';
+import { systemTranslations } from '../i18n/systemTranslations';
 
 import { 
   getCustomArticles, 
@@ -52,6 +54,8 @@ import {
 export function AdminPage() {
   const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
+  const { language } = useLanguage();
+  const copy = systemTranslations[language].admin;
   const { success, error } = useToast();
   
   const initialTab = searchParams.get('tab') === 'dev' ? 'desenvolvedor' : 'agendamentos';
@@ -83,7 +87,7 @@ export function AdminPage() {
         console.error('Could not verify administrator session:', err);
         setCurrentUser(null);
         navigate('/login', { replace: true });
-        error(err instanceof Error ? err.message : 'Não foi possível confirmar a sessão. Inicie sessão novamente.');
+        error(err instanceof Error ? err.message : copy.sessionVerificationError);
         return;
       }
 
@@ -105,13 +109,13 @@ export function AdminPage() {
         setStats(current => ({ ...current, visitors }));
       } catch (err) {
         console.error('Could not load administrator panel:', err);
-        error(err instanceof Error ? err.message : 'Não foi possível carregar o painel.');
+        error(err instanceof Error ? err.message : copy.panelLoadError);
       }
     };
     void verifySessionAndLoad();
     syncArticlesFromSupabase().catch(err => {
       console.error('Could not sync admin publications from Supabase:', err);
-      error(err.message || 'Não foi possível carregar as publicações.');
+      error(err.message || copy.publicationSyncError);
     });
 
     const handleArticlesUpdate = () => {
@@ -133,14 +137,14 @@ export function AdminPage() {
   };
 
   const handleResetVisitors = async () => {
-    if (!confirm('Tem a certeza que deseja repor o contador global de visitantes a zero?')) return;
+    if (!confirm(copy.resetVisitorConfirm)) return;
     setIsResettingVisitors(true);
     try {
       const visitors = await resetSiteVisitorCount();
       setStats(current => ({ ...current, visitors }));
-      success('Contador global de visitantes reiniciado.');
+      success(copy.visitorResetSuccess);
     } catch (err) {
-      error(err instanceof Error ? err.message : 'Não foi possível reiniciar o contador.');
+      error(err instanceof Error ? err.message : copy.resetVisitorError);
     } finally {
       setIsResettingVisitors(false);
     }
@@ -150,9 +154,9 @@ export function AdminPage() {
     try {
       await updateAppointmentStatus(id, newStatus);
       await loadData();
-      success('Estado do agendamento atualizado.');
+      success(copy.statusUpdated);
     } catch (err) {
-      error(err instanceof Error ? err.message : 'Não foi possível alterar o estado.');
+      error(err instanceof Error ? err.message : copy.statusUpdateError);
     }
   };
 
@@ -160,18 +164,18 @@ export function AdminPage() {
     try {
       await loadData();
     } catch (err) {
-      error(err instanceof Error ? err.message : 'Não foi possível atualizar os agendamentos.');
+      error(err instanceof Error ? err.message : copy.refreshAppointmentsError);
     }
   };
 
   const handleDeleteAppointment = async (id: string, name: string) => {
-    if (confirm(`Tem a certeza que deseja remover o agendamento de "${name}"?`)) {
+    if (confirm(copy.deleteAppointmentConfirm.replace('{name}', name))) {
       try {
         await deleteAppointment(id);
         await loadData();
-        success('Agendamento removido.');
+        success(copy.appointmentDeleted);
       } catch (err) {
-        error(err instanceof Error ? err.message : 'Não foi possível remover o agendamento.');
+        error(err instanceof Error ? err.message : copy.deleteAppointmentError);
       }
     }
   };
@@ -179,13 +183,16 @@ export function AdminPage() {
   const handlePublish = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!newTitle.trim() || !newExcerpt.trim()) {
-      error('Preencha o Título e o Conteúdo do Evento/Publicação.');
+      error(copy.publishRequired);
       return;
     }
     setIsPublishing(true);
     const article: ArticleItem = {
       title: newTitle.trim(),
-      date: new Date().toLocaleDateString('pt-PT', { day: '2-digit', month: 'short', year: 'numeric' }),
+      date: new Date().toLocaleDateString(
+        language === 'pt' ? 'pt-PT' : language === 'fr' ? 'fr-FR' : language === 'es' ? 'es-ES' : 'en-US',
+        { day: '2-digit', month: 'short', year: 'numeric' }
+      ),
       author: 'Direção EMDPN-GB',
       excerpt: newExcerpt.trim(),
       category: newCategory.trim(),
@@ -194,28 +201,28 @@ export function AdminPage() {
     try {
       await saveArticle(article);
       setCustomArticles(getCustomArticles());
-      success('Publicação guardada no portal e disponível para todos.');
+      success(copy.published);
       setNewTitle('');
       setNewExcerpt('');
       setNewImageUrl('');
       setShowPublishModal(false);
     } catch (err) {
       console.error('Could not publish article from admin:', err);
-      error(err instanceof Error ? err.message : 'Não foi possível publicar.');
+      error(err instanceof Error ? err.message : copy.publishError);
     } finally {
       setIsPublishing(false);
     }
   };
 
   const handleDeleteArticle = async (id: string) => {
-    if (confirm('Tem certeza que pretende remover esta publicação do portal?')) {
+    if (confirm(copy.deletePublicationConfirm)) {
       try {
         await deleteArticle(id);
         setCustomArticles(getCustomArticles());
-        success('Publicação removida com sucesso.');
+        success(copy.publicationDeleted);
       } catch (err) {
         console.error('Could not delete admin article:', err);
-        error(err instanceof Error ? err.message : 'Não foi possível remover a publicação.');
+        error(err instanceof Error ? err.message : copy.deletePublicationError);
       }
     }
   };
@@ -225,7 +232,7 @@ export function AdminPage() {
       await authService.logout();
       navigate('/login');
     } catch (err) {
-      error(err instanceof Error ? err.message : 'Não foi possível terminar a sessão.');
+      error(err instanceof Error ? err.message : copy.logoutError);
     }
   };
 
@@ -276,8 +283,8 @@ export function AdminPage() {
               GB
             </div>
             <div>
-              <h1 className="text-lg font-bold text-white font-serif leading-none">Painel de Gestão e Publicações</h1>
-              <span className="text-xs text-neutral-400">EMDPN-GB • Escritório Central</span>
+              <h1 className="text-lg font-bold text-white font-serif leading-none">{copy.title}</h1>
+              <span className="text-xs text-neutral-400">{copy.office}</span>
             </div>
           </div>
 
@@ -286,23 +293,23 @@ export function AdminPage() {
               onClick={() => setShowPublishModal(true)}
               className="inline-flex items-center gap-1.5 bg-[#16845B] hover:bg-[#126b48] text-white px-3.5 py-1.5 rounded-lg text-xs font-bold transition-all shadow-sm"
             >
-              <PlusCircle size={15} /> Publicar Evento / Notícia
+              <PlusCircle size={15} /> {copy.publish}
             </button>}
             <span className="hidden sm:inline-block text-xs bg-white/10 px-3 py-1.5 rounded-lg text-neutral-300">
-              Sessão: <strong className="text-white">{currentUser?.role === 'admin' ? 'Administrador' : 'Secretaria'}</strong>
+              {copy.session} <strong className="text-white">{currentUser?.role === 'admin' ? copy.administrator : copy.secretary}</strong>
             </span>
             {currentUser?.role === 'admin' && <button
               onClick={handleExportCSV}
               className="inline-flex items-center gap-1.5 bg-accent-500 hover:bg-accent-400 text-neutral-950 px-3.5 py-1.5 rounded-lg text-xs font-bold transition-all shadow-sm"
-              title="Exportar dados para Excel/CSV"
+              title={copy.exportTitle}
             >
-              <Download size={14} /> Exportar CSV
+              <Download size={14} /> {copy.export}
             </button>}
             <button
               onClick={handleLogout}
               className="inline-flex items-center gap-1.5 bg-flag-700 hover:bg-flag-800 text-white px-3.5 py-1.5 rounded-lg text-xs font-bold transition-all shadow-sm"
             >
-              <LogOut size={14} /> Sair
+              <LogOut size={14} /> {copy.logout}
             </button>
           </div>
         </div>
@@ -322,7 +329,7 @@ export function AdminPage() {
                 : 'bg-white text-neutral-600 hover:bg-neutral-50 border border-neutral-200'
             }`}
           >
-            <Calendar size={16} /> 📋 Agendamentos & Processos ({appointments.length})
+            <Calendar size={16} /> 📋 {copy.appointmentsTab} ({appointments.length})
           </button>
 
           {currentUser?.role === 'admin' && <button
@@ -336,7 +343,7 @@ export function AdminPage() {
                 : 'bg-white text-neutral-600 hover:bg-neutral-50 border border-neutral-200'
             }`}
           >
-            <Wrench size={16} /> 🛠️ Área do Desenvolvedor & Gestor de Imagens
+            <Wrench size={16} /> 🛠️ {copy.developerTab}
           </button>}
         </div>
 
@@ -353,30 +360,30 @@ export function AdminPage() {
             {/* KPI stats */}
             <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
               <div className="bg-white p-5 rounded-xl border border-neutral-200 shadow-sm">
-                <span className="text-xs font-bold text-neutral-500 uppercase tracking-wider block mb-1">Total de Agendamentos</span>
+                <span className="text-xs font-bold text-neutral-500 uppercase tracking-wider block mb-1">{copy.totalAppointments}</span>
                 <div className="text-2xl font-black text-primary-950">{appointments.length}</div>
-                <span className="text-[11px] text-primary-600 font-semibold mt-1 block">Registo em sistema</span>
+                <span className="text-[11px] text-primary-600 font-semibold mt-1 block">{copy.systemRecord}</span>
               </div>
 
           <div className="bg-white p-5 rounded-xl border border-neutral-200 shadow-sm">
-            <span className="text-xs font-bold text-neutral-500 uppercase tracking-wider block mb-1">Confirmados</span>
+            <span className="text-xs font-bold text-neutral-500 uppercase tracking-wider block mb-1">{copy.confirmed}</span>
             <div className="text-2xl font-black text-success-700">
               {appointments.filter(a => a.status === 'confirmado').length}
             </div>
-            <span className="text-[11px] text-success-600 font-semibold mt-1 block">Prontos para atendimento</span>
+            <span className="text-[11px] text-success-600 font-semibold mt-1 block">{copy.ready}</span>
           </div>
 
           <div className="bg-white p-5 rounded-xl border border-neutral-200 shadow-sm">
-            <span className="text-xs font-bold text-neutral-500 uppercase tracking-wider block mb-1">Beneficiários do Site</span>
+            <span className="text-xs font-bold text-neutral-500 uppercase tracking-wider block mb-1">{copy.beneficiaries}</span>
             <div className="text-2xl font-black text-accent-700">{stats.beneficiaries}</div>
-            <span className="text-[11px] text-accent-600 font-semibold mt-1 block">Processos concluídos</span>
+            <span className="text-[11px] text-accent-600 font-semibold mt-1 block">{copy.completed}</span>
           </div>
 
           <div className="bg-white p-5 rounded-xl border border-neutral-200 shadow-sm">
-            <span className="text-xs font-bold text-neutral-500 uppercase tracking-wider block mb-1">Visitantes Registados</span>
+            <span className="text-xs font-bold text-neutral-500 uppercase tracking-wider block mb-1">{copy.visitors}</span>
             <div className="text-2xl font-black text-neutral-800">{stats.visitors}</div>
             <div className="flex items-center justify-between gap-2 mt-1">
-              <span className="text-[11px] text-neutral-400 font-semibold">Visitantes únicos</span>
+              <span className="text-[11px] text-neutral-400 font-semibold">{copy.uniqueVisitors}</span>
               {currentUser?.role === 'admin' && <button
                 type="button"
                 onClick={handleResetVisitors}
@@ -384,7 +391,7 @@ export function AdminPage() {
                 className="inline-flex items-center gap-1 text-[10px] font-bold text-red-700 hover:text-red-900 disabled:opacity-50"
               >
                 <RotateCcw size={12} />
-                {isResettingVisitors ? 'A repor…' : 'Repor a zero'}
+                {isResettingVisitors ? copy.resetting : copy.reset}
               </button>}
             </div>
           </div>
@@ -396,9 +403,9 @@ export function AdminPage() {
             <div className="flex items-center justify-between mb-4 pb-2 border-b border-neutral-100">
               <div className="flex items-center gap-2">
                 <Megaphone className="text-[#16845B]" size={20} />
-                <h3 className="font-serif font-bold text-primary-950 text-base">Publicações Ativas no Portal ({customArticles.length})</h3>
+                <h3 className="font-serif font-bold text-primary-950 text-base">{copy.activePublications} ({customArticles.length})</h3>
               </div>
-              <span className="text-xs text-neutral-500">Visíveis na página de Notícias & Eventos</span>
+              <span className="text-xs text-neutral-500">{copy.publicationVisibility}</span>
             </div>
             <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
               {customArticles.map(art => (
@@ -417,7 +424,7 @@ export function AdminPage() {
                       onClick={() => handleDeleteArticle(art.id!)}
                       className="text-red-600 hover:text-red-800 text-xs font-bold flex items-center gap-1 p-1 rounded hover:bg-red-50 transition-colors"
                     >
-                      <Trash2 size={13} /> Remover
+                      <Trash2 size={13} /> {copy.remove}
                     </button>
                   </div>
                 </div>
@@ -432,7 +439,7 @@ export function AdminPage() {
             <Search size={18} className="text-neutral-400 shrink-0" />
             <input 
               type="text"
-              placeholder="Pesquisar por nome, nº de protocolo, telefone ou serviço..."
+              placeholder={copy.search}
               value={searchTerm}
               onChange={e => setSearchTerm(e.target.value)}
               className="w-full text-sm outline-none bg-transparent"
@@ -446,16 +453,16 @@ export function AdminPage() {
               onChange={e => setFilterStatus(e.target.value)}
               className="text-xs font-bold bg-neutral-50 border border-neutral-200 rounded-lg px-3 py-2 text-neutral-700 focus:outline-none"
             >
-              <option value="todos">Todos os Estados</option>
-              <option value="confirmado">Apenas Confirmados</option>
-              <option value="pendente">Apenas Pendentes</option>
-              <option value="concluido">Apenas Concluídos</option>
-              <option value="cancelado">Cancelados</option>
+              <option value="todos">{copy.allStatuses}</option>
+              <option value="confirmado">{copy.onlyConfirmed}</option>
+              <option value="pendente">{copy.onlyPending}</option>
+              <option value="concluido">{copy.onlyCompleted}</option>
+              <option value="cancelado">{copy.cancelled}</option>
             </select>
             <button
               onClick={() => void handleReloadAppointments()}
               className="p-2 text-neutral-500 hover:text-primary-700 hover:bg-neutral-100 rounded-lg transition-colors"
-              title="Recarregar"
+              title={copy.reload}
             >
               <RefreshCw size={16} />
             </button>
@@ -468,20 +475,20 @@ export function AdminPage() {
             <table className="w-full text-left border-collapse text-xs">
               <thead>
                 <tr className="bg-neutral-50 border-b border-neutral-200 text-neutral-600 uppercase font-black tracking-wider text-[11px]">
-                  <th className="py-3.5 px-4">Protocolo</th>
-                  <th className="py-3.5 px-4">Requerente</th>
-                  <th className="py-3.5 px-4">Serviço Solicitado</th>
-                  <th className="py-3.5 px-4">Data & Horário</th>
-                  <th className="py-3.5 px-4">Modalidade</th>
-                  <th className="py-3.5 px-4">Estado</th>
-                  <th className="py-3.5 px-4 text-right">Ações</th>
+                  <th className="py-3.5 px-4">{copy.protocol}</th>
+                  <th className="py-3.5 px-4">{copy.applicant}</th>
+                  <th className="py-3.5 px-4">{copy.requestedService}</th>
+                  <th className="py-3.5 px-4">{copy.dateTime}</th>
+                  <th className="py-3.5 px-4">{copy.modality}</th>
+                  <th className="py-3.5 px-4">{copy.status}</th>
+                  <th className="py-3.5 px-4 text-right">{copy.actions}</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-neutral-100">
                 {filteredAppointments.length === 0 ? (
                   <tr>
                     <td colSpan={7} className="py-12 text-center text-neutral-400 font-medium">
-                      Nenhum agendamento encontrado com os filtros selecionados.
+                      {copy.noAppointments}
                     </td>
                   </tr>
                 ) : (
@@ -505,7 +512,7 @@ export function AdminPage() {
                       </td>
                       <td className="py-3.5 px-4 whitespace-nowrap">
                         <div className="font-bold text-neutral-900">{apt.date}</div>
-                        <div className="text-[11px] text-neutral-500">{apt.time} (Bissau)</div>
+                        <div className="text-[11px] text-neutral-500">{apt.time} {copy.bissauTime}</div>
                       </td>
                       <td className="py-3.5 px-4 whitespace-nowrap">
                         <span className={`px-2 py-0.5 rounded text-[10px] font-bold uppercase ${
@@ -513,7 +520,7 @@ export function AdminPage() {
                             ? 'bg-rose-100 text-rose-800 border border-rose-300'
                             : 'bg-primary-50 text-primary-700 border border-primary-200'
                         }`}>
-                          {apt.modality}
+                          {apt.modality === 'presencial' ? copy.inPerson : copy.remote}
                         </span>
                       </td>
                       <td className="py-3.5 px-4 whitespace-nowrap">
@@ -530,10 +537,10 @@ export function AdminPage() {
                                   : 'bg-red-50 text-red-700 border-red-200'
                           }`}
                         >
-                          <option value="confirmado">Confirmado</option>
-                          <option value="pendente">Pendente</option>
-                          <option value="concluido">Concluído</option>
-                          <option value="cancelado">Cancelado</option>
+                          <option value="confirmado">{copy.confirmedStatus}</option>
+                          <option value="pendente">{copy.pendingStatus}</option>
+                          <option value="concluido">{copy.completedStatus}</option>
+                          <option value="cancelado">{copy.canceledStatus}</option>
                         </select> : <span className="text-[11px] font-extrabold uppercase rounded-lg px-2.5 py-1 border bg-neutral-50 text-neutral-700 border-neutral-200">{apt.status}</span>}
                       </td>
                       <td className="py-3.5 px-4 text-right whitespace-nowrap">
@@ -543,14 +550,14 @@ export function AdminPage() {
                             target="_blank"
                             rel="noopener noreferrer"
                             className="p-1.5 text-success-700 hover:bg-success-50 rounded-md transition-colors"
-                            title="Conversar no WhatsApp"
+                            title={copy.whatsapp}
                           >
                             <Phone size={15} />
                           </a>
                           {currentUser?.role === 'admin' && <button
                             onClick={() => handleDeleteAppointment(apt.id, apt.fullName)}
                             className="p-1.5 text-red-600 hover:bg-red-50 rounded-md transition-colors"
-                            title="Remover agendamento"
+                            title={copy.deleteAppointment}
                           >
                             <Trash2 size={15} />
                           </button>}
@@ -572,7 +579,7 @@ export function AdminPage() {
             <div className="bg-white rounded-2xl max-w-lg w-full p-7 sm:p-8 shadow-2xl border border-neutral-200 animate-fade-in text-left">
               <div className="flex items-center justify-between mb-5 pb-3 border-b border-neutral-100">
                 <h3 className="text-xl font-serif font-bold text-primary-950 flex items-center gap-2">
-                  <PlusCircle className="text-[#16845B]" size={22} /> Publicar Evento / Notícia Oficial
+                  <PlusCircle className="text-[#16845B]" size={22} /> {copy.publishTitle}
                 </h3>
                 <button 
                   onClick={() => setShowPublishModal(false)}
@@ -585,14 +592,14 @@ export function AdminPage() {
               <form onSubmit={handlePublish} className="space-y-4">
                 <div>
                   <label className="block text-xs font-bold text-neutral-700 uppercase tracking-wider mb-1">
-                    Título do Evento / Publicação *
+                    {copy.eventTitle}
                   </label>
                   <input 
                     type="text"
                     required
                     value={newTitle}
                     onChange={e => setNewTitle(e.target.value)}
-                    placeholder="Ex: Cerimónia de Entrega de Passaportes em Bissau"
+                    placeholder={copy.eventPlaceholder}
                     className="w-full px-4 py-3 bg-neutral-50 border border-neutral-200 rounded-xl text-neutral-900 text-sm focus:outline-none focus:border-primary-600"
                   />
                 </div>
@@ -600,23 +607,24 @@ export function AdminPage() {
                 <div className="grid grid-cols-2 gap-4">
                   <div>
                     <label className="block text-xs font-bold text-neutral-700 uppercase tracking-wider mb-1">
-                      Categoria
+                      {copy.category}
                     </label>
                     <select
                       value={newCategory}
                       onChange={e => setNewCategory(e.target.value)}
                       className="w-full px-4 py-3 bg-neutral-50 border border-neutral-200 rounded-xl text-neutral-900 text-sm focus:outline-none focus:border-primary-600"
                     >
-                      <option value="Institucional">Institucional</option>
-                      <option value="Evento">Evento</option>
-                      <option value="Comunicado">Comunicado Oficial</option>
-                      <option value="Dicas">Dicas & Requisitos</option>
+                      <option value="Institucional">{copy.categories.institutional}</option>
+                      <option value="Evento">{copy.categories.event}</option>
+                      <option value="Comunicado">{copy.categories.announcement}</option>
+                      <option value="Dicas">{copy.categories.tips}</option>
                     </select>
                   </div>
 
                   <div>
                     <label className="block text-xs font-bold text-neutral-700 uppercase tracking-wider mb-1">
-                      Imagem do Computador
+                      {copy.image}
+                      <span className="ml-2 text-[10px] text-neutral-500">{copy.imageHint}</span>
                     </label>
                     <input 
                       type="file"
@@ -627,9 +635,9 @@ export function AdminPage() {
                           try {
                             const dataUrl = await processImageFile(file, 800, 600, 0.85);
                             setNewImageUrl(dataUrl);
-                            success('Foto carregada do computador com sucesso!');
+                            success(copy.imageUploadSuccess);
                           } catch (err) {
-                            error(err instanceof Error ? err.message : 'Erro ao processar imagem. Selecione JPG, PNG ou WEBP.');
+                            error(err instanceof Error ? err.message : copy.imageProcessError);
                           }
                         }
                       }}
@@ -640,12 +648,12 @@ export function AdminPage() {
 
                 {newImageUrl && (
                   <div className="relative w-full h-24 rounded-xl overflow-hidden bg-neutral-900 border border-neutral-200">
-                    <img src={newImageUrl} alt="Pré-visualização" className="w-full h-full object-cover" />
+                    <img src={newImageUrl} alt={copy.preview} className="w-full h-full object-cover" />
                     <button
                       type="button"
                       onClick={() => setNewImageUrl('')}
                       className="absolute top-1.5 right-1.5 p-1 rounded-full bg-black/60 text-white hover:bg-black/80"
-                      title="Remover imagem"
+                      title={copy.removeImage}
                     >
                       ✕
                     </button>
@@ -654,14 +662,14 @@ export function AdminPage() {
 
                 <div>
                   <label className="block text-xs font-bold text-neutral-700 uppercase tracking-wider mb-1">
-                    Conteúdo / Resumo da Publicação *
+                    {copy.content}
                   </label>
                   <textarea 
                     rows={4}
                     required
                     value={newExcerpt}
                     onChange={e => setNewExcerpt(e.target.value)}
-                    placeholder="Descreva os detalhes da publicação ou evento oficial..."
+                    placeholder={copy.contentPlaceholder}
                     className="w-full px-4 py-3 bg-neutral-50 border border-neutral-200 rounded-xl text-neutral-900 text-sm focus:outline-none focus:border-primary-600 resize-none"
                   />
                 </div>
@@ -672,14 +680,14 @@ export function AdminPage() {
                     onClick={() => setShowPublishModal(false)}
                     className="px-5 py-2.5 bg-neutral-100 hover:bg-neutral-200 text-neutral-700 rounded-xl font-bold text-xs uppercase"
                   >
-                    Cancelar
+                    {copy.cancel}
                   </button>
                   <button 
                     type="submit"
                     disabled={isPublishing}
                     className="btn btn-primary text-xs uppercase py-2.5 px-6 bg-[#16845B] hover:bg-[#126b48] text-white disabled:opacity-50"
                   >
-                    {isPublishing ? 'A guardar...' : 'Publicar no Portal'}
+                    {isPublishing ? copy.saving : copy.submit}
                   </button>
                 </div>
               </form>

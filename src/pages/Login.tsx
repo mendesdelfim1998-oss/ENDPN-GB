@@ -4,9 +4,13 @@ import { PageHeader } from '../components/PageHeader';
 import { Reveal } from '../components/Reveal';
 import { Mail, Lock, LogIn, ShieldCheck, CheckCircle2 } from 'lucide-react';
 import { authService } from '../services/authService';
+import { useLanguage } from '../context/LanguageContext';
+import { systemTranslations } from '../i18n/systemTranslations';
 
 export function Login() {
   const navigate = useNavigate();
+  const { language } = useLanguage();
+  const copy = systemTranslations[language].login;
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
@@ -29,11 +33,11 @@ export function Login() {
         setSuccess(true);
         setTimeout(() => navigate('/admin'), 500);
       } else {
-        setError(result.error || 'Credenciais inválidas.');
+        setError(result.error || copy.invalidCredentials);
       }
     } catch (loginError) {
       console.error('Administrator sign-in failed:', loginError);
-      setError('Não foi possível iniciar sessão. Verifique a ligação ao Supabase e tente novamente.');
+      setError(copy.connectionError);
     } finally {
       setIsLoading(false);
     }
@@ -42,8 +46,8 @@ export function Login() {
   return (
     <div className="bg-neutral-50 min-h-[calc(100vh-330px)] pb-20">
       <PageHeader 
-        title="Portal de Acesso e Gestão" 
-        subtitle="Entrada restrita para gestão de agendamentos, processos e documentação oficial." 
+        title={copy.title}
+        subtitle={copy.subtitle}
       />
       
       <section className="py-14">
@@ -54,9 +58,9 @@ export function Login() {
                 <div className="w-16 h-16 rounded-2xl bg-primary-950 text-accent-400 flex items-center justify-center shadow-lg mb-4 ring-4 ring-primary-100">
                   <ShieldCheck size={32} />
                 </div>
-                <h2 className="text-2xl text-primary-950 font-bold m-0 font-serif">Área de Administração</h2>
+                <h2 className="text-2xl text-primary-950 font-bold m-0 font-serif">{copy.cardTitle}</h2>
                 <p className="text-neutral-500 text-xs sm:text-sm mt-1.5">
-                  Gestão interna de pedidos, agendamentos e emissão de documentos.
+                  {copy.cardDescription}
                 </p>
               </div>
 
@@ -68,14 +72,14 @@ export function Login() {
 
               {success && (
                 <div className="p-3.5 mb-5 bg-success-50 border border-success-100 rounded-xl text-success-800 text-xs font-bold text-center flex items-center justify-center gap-2 animate-fade-in">
-                  <CheckCircle2 size={16} /> Acesso autorizado! A redirecionar para o painel...
+                  <CheckCircle2 size={16} />                   {copy.success}
                 </div>
               )}
 
               <form onSubmit={handleLogin} className="space-y-4">
                 <div>
                   <label className="block text-primary-950 text-xs font-bold uppercase tracking-wider mb-1.5">
-                    E-mail do Administrador
+                    {copy.email}
                   </label>
                   <div className="flex items-center gap-2.5 border-2 border-neutral-200 rounded-xl bg-neutral-50 px-3.5 focus-within:border-primary-600 focus-within:bg-white transition-all">
                     <Mail size={18} className="text-neutral-400 shrink-0" />
@@ -84,7 +88,7 @@ export function Login() {
                       value={email}
                       onChange={e => setEmail(e.target.value)}
                       className="w-full py-3.5 outline-none bg-transparent text-sm font-medium"
-                      placeholder="E-mail registado no sistema"
+                      placeholder={copy.emailPlaceholder}
                       required 
                     />
                   </div>
@@ -92,7 +96,7 @@ export function Login() {
 
                 <div>
                   <label className="block text-primary-950 text-xs font-bold uppercase tracking-wider mb-1.5">
-                    Palavra-passe
+                    {copy.password}
                   </label>
                   <div className="flex items-center gap-2.5 border-2 border-neutral-200 rounded-xl bg-neutral-50 px-3.5 focus-within:border-primary-600 focus-within:bg-white transition-all">
                     <Lock size={18} className="text-neutral-400 shrink-0" />
@@ -112,12 +116,12 @@ export function Login() {
                   disabled={isLoading}
                   className="btn btn-institutional w-full justify-center py-3.5 text-sm rounded-xl shadow-md mt-2"
                 >
-                  <LogIn size={18} /> {isLoading ? 'A validar...' : 'Entrar no Painel de Agendamentos'}
+                  <LogIn size={18} /> {isLoading ? copy.validating : copy.signIn}
                 </button>
               </form>
 
               <div className="mt-8 pt-5 border-t border-neutral-200 text-xs text-neutral-500">
-                Use uma conta criada no Supabase Auth com a função administrativa ativa.
+                {copy.footer}
               </div>
             </div>
           </Reveal>

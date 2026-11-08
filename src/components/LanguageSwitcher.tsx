@@ -131,7 +131,7 @@ interface LanguageSwitcherProps {
 }
 
 export const LanguageSwitcher: React.FC<LanguageSwitcherProps> = ({ variant = 'header', className = '' }) => {
-  const { language, setLanguage } = useLanguage();
+  const { language, setLanguage, t } = useLanguage();
   const [isOpen, setIsOpen] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
 
@@ -160,7 +160,7 @@ export const LanguageSwitcher: React.FC<LanguageSwitcherProps> = ({ variant = 'h
     return (
       <div className={`pt-2 ${className}`}>
         <div className="text-xs font-semibold uppercase tracking-wider text-neutral-500 mb-2 px-1">
-          Idioma / Language / Langue
+          {t.nav.language}
         </div>
         <div className="grid grid-cols-2 gap-2">
           {LANGUAGES.map((item) => {
@@ -195,7 +195,7 @@ export const LanguageSwitcher: React.FC<LanguageSwitcherProps> = ({ variant = 'h
         className="inline-flex items-center gap-2 px-2.5 py-1.5 rounded-lg border border-neutral-300 bg-white/90 hover:bg-neutral-50 text-neutral-800 text-xs font-semibold transition-all hover:border-neutral-400 focus:outline-none focus:ring-2 focus:ring-primary-500/20 shadow-xs"
         aria-haspopup="listbox"
         aria-expanded={isOpen}
-        aria-label="Selecionar idioma"
+        aria-label={t.nav.language}
       >
         <FlagIcon code={activeOption.code} className="w-5 h-3.5 shadow-2xs" />
         <span className="uppercase tracking-wider font-bold text-[11px] text-neutral-700">
@@ -210,7 +210,7 @@ export const LanguageSwitcher: React.FC<LanguageSwitcherProps> = ({ variant = 'h
           role="listbox"
         >
           <div className="px-3 py-1.5 border-b border-neutral-100 text-[10px] font-bold uppercase tracking-wider text-neutral-400">
-            Selecionar Idioma
+            {t.nav.language}
           </div>
           {LANGUAGES.map((item) => {
             const isSelected = item.code === language;

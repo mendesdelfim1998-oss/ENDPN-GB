@@ -4,10 +4,13 @@ Este é o website oficial do **EMDPN-GB** (Escritório de Movimentação de Docu
 
 ## Funcionalidades
 - **Portal Informativo**: Detalhes sobre requisitos, processos e serviços de cidadania.
+- **Multilingue**: Interface disponível em português, francês, inglês e espanhol; a preferência de idioma é guardada no navegador.
 - **Fluxo de Pedido**: Formulário inteligente para iniciar pedidos de naturalização por descendência, casamento ou residência.
 - **Design Profissional**: UI institucional baseada em tons de esmeralda e ouro, com animações fluidas.
 - **Gestão de Documentos**: Modelos de formulários oficiais para descarga.
 - **Integração WhatsApp**: Contacto direto para consultoria.
+
+As transcrições e os modelos de documentos oficiais são apresentados no idioma do documento de origem para preservar a sua fidelidade. Os textos fixos da interface, os controlos e as instruções acompanham o idioma selecionado; publicações inseridas pelos administradores permanecem no idioma em que foram escritas.
 
 ## Tecnologias
 - **Frontend**: React 18, Vite, TypeScript

@@ -4,6 +4,8 @@ import { Reveal } from './Reveal';
 import { clsx } from 'clsx';
 import { useToast } from '../context/ToastContext';
 import { OFFICIAL_EMAILS_MAILTO } from '../services/appointmentService';
+import { useLanguage } from '../context/LanguageContext';
+import { systemTranslations } from '../i18n/systemTranslations';
 
 type FormType = 'naturalizacao' | 'casamento' | 'descendencia';
 
@@ -59,9 +61,53 @@ const formDefinitions: Record<FormType, FormDefinition> = {
   }
 };
 
+const fieldLabelKeys = {
+  nome: 'name',
+  email: 'email',
+  telefone: 'phone',
+  documento: 'document',
+  residencia: 'residence',
+  motivoPedido: 'reason',
+  observacoes: 'notes',
+  conjuge: 'spouse',
+  dataCasamento: 'weddingDate',
+  ascendente: 'ancestor',
+  parentesco: 'kinship'
+} as const;
+
+const fieldPlaceholderKeys = {
+  nome: 'fullNamePlaceholder',
+  documento: 'passportPlaceholder',
+  residencia: 'residencePlaceholder',
+  observacoes: 'notesPlaceholder',
+  conjuge: 'spousePlaceholder',
+  ascendente: 'ancestorPlaceholder',
+  parentesco: 'kinshipPlaceholder'
+} as const;
+
 export function NationalityForm({ type, onBack }: { type: FormType; onBack: () => void }) {
-  const definition = formDefinitions[type];
-  const { showToast, success, error } = useToast();
+  const { language } = useLanguage();
+  const copy = systemTranslations[language].form;
+  const baseDefinition = formDefinitions[type];
+  const definition = {
+    ...baseDefinition,
+    label: copy.type[type].title,
+    description: copy.type[type].description,
+    fields: baseDefinition.fields.map(field => ({
+      ...field,
+      label: copy.fields[fieldLabelKeys[field.name as keyof typeof fieldLabelKeys]],
+      placeholder: field.name === 'motivoPedido'
+        ? copy.fields[type === 'naturalizacao'
+          ? 'reasonNaturalizationPlaceholder'
+          : type === 'casamento'
+            ? 'reasonMarriagePlaceholder'
+            : 'reasonDescentPlaceholder']
+        : field.name in fieldPlaceholderKeys
+          ? copy.fields[fieldPlaceholderKeys[field.name as keyof typeof fieldPlaceholderKeys]]
+          : field.placeholder
+    }))
+  };
+  const { success, error } = useToast();
   const [formData, setFormData] = useState<Record<string, string>>({});
   const [status, setStatus] = useState<string | null>(null);
 
@@ -71,30 +117,32 @@ export function NationalityForm({ type, onBack }: { type: FormType; onBack: () =
 
   const getMessageText = () => {
     const lines = [
-      'PEDIDO OFICIAL DE NACIONALIDADE',
-      'EMDPN-GB (ESCRITÓRIO DE MOVIMENTAÇÃO DOCUMENTAL)',
+      copy.requestHeading,
+      copy.officeName,
       '',
-      `Modalidade: ${definition.label}`
+      `${copy.modality}: ${definition.label}`
     ];
     Object.entries(formData).forEach(([key, value]) => {
-      if (value) lines.push(`${key}: ${value}`);
+      if (value && key in fieldLabelKeys) {
+        lines.push(`${copy.fields[fieldLabelKeys[key as keyof typeof fieldLabelKeys]]}: ${value}`);
+      }
     });
     lines.push(
       '',
-      'E-mail oficial destinatário: infor.ciesemdpngb@gmail.com',
+      `${copy.officialEmail}: infor.ciesemdpngb@gmail.com`,
       '',
-      'Enviado através do portal oficial EMDPN-GB.'
+      copy.submittedVia
     );
     return lines.join('\n');
   };
 
   const handleAction = (action: 'whatsapp' | 'email' | 'download') => {
     if (!formData.nome || !formData.nome.trim()) {
-      error('Por favor, preencha o seu Nome e Apelido completo antes de submeter.');
+      error(copy.missingName);
       return;
     }
     if (!formData.motivoPedido || !formData.motivoPedido.trim()) {
-      error('Por favor, indique o Motivo do Pedido de Nacionalidade.');
+      error(copy.missingReason);
       return;
     }
 
@@ -108,16 +156,16 @@ export function NationalityForm({ type, onBack }: { type: FormType; onBack: () =
       link.download = `formulario-nacionalidade-${type}.txt`;
       link.click();
       URL.revokeObjectURL(link.href);
-      setStatus('Pedido guardado e formulário descarregado.');
-      success('Formulário descarregado com sucesso (.TXT)!');
+      setStatus(copy.saved);
+      success(copy.downloaded);
     } else if (action === 'whatsapp') {
       window.open(`https://wa.me/245957000555?text=${encodeURIComponent(text)}`, '_blank');
-      setStatus('Pedido preparado. A abrir o WhatsApp...');
-      success('Pedido encaminhado para o WhatsApp oficial com sucesso!');
+      setStatus(copy.openingWhatsApp);
+      success(copy.sentWhatsApp);
     } else if (action === 'email') {
       window.location.href = `mailto:${OFFICIAL_EMAILS_MAILTO}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(text)}`;
-      setStatus('Pedido preparado. A abrir o seu e-mail...');
-      success('Encaminhado para o e-mail oficial (infor.ciesemdpngb@gmail.com)!');
+      setStatus(copy.openingEmail);
+      success(copy.sentEmail);
     }
   };
 
@@ -126,9 +174,9 @@ export function NationalityForm({ type, onBack }: { type: FormType; onBack: () =
       <div className="bg-white p-6 md:p-12 border border-primary-100 rounded-xl shadow-xl">
         <div className="flex items-center justify-between gap-4 pb-5 border-b border-neutral-200 mb-8">
           <button onClick={onBack} className="flex items-center gap-1.5 text-primary-700 font-bold text-sm hover:text-primary-900">
-            <ChevronLeft size={18} /> Voltar
+            <ChevronLeft size={18} /> {copy.back}
           </button>
-          <span className="text-neutral-500 text-[0.72rem] font-bold tracking-widest uppercase">Passo 2 de 2</span>
+          <span className="text-neutral-500 text-[0.72rem] font-bold tracking-widest uppercase">{copy.step}</span>
         </div>
 
         <div className="flex items-start gap-4 md:gap-6 mb-8">
@@ -136,9 +184,9 @@ export function NationalityForm({ type, onBack }: { type: FormType; onBack: () =
             {definition.number}
           </div>
           <div>
-            <span className="text-accent-700 font-extrabold text-[0.78rem] tracking-widest uppercase block mb-1">Iniciando Pedido</span>
+            <span className="text-accent-700 font-extrabold text-[0.78rem] tracking-widest uppercase block mb-1">{copy.starting}</span>
             <h2 className="text-2xl md:text-3xl font-serif font-bold text-primary-900 m-0">{definition.label}</h2>
-            <p className="text-neutral-600 mt-2 text-sm md:text-base leading-relaxed">{definition.description} Preencha os dados abaixo para continuar.</p>
+            <p className="text-neutral-600 mt-2 text-sm md:text-base leading-relaxed">{definition.description} {copy.continueDescription}</p>
           </div>
         </div>
 
@@ -175,21 +223,21 @@ export function NationalityForm({ type, onBack }: { type: FormType; onBack: () =
               onClick={() => handleAction('whatsapp')}
               className="btn btn-whatsapp flex-1 min-w-[200px]"
             >
-              <Send size={16} /> Enviar via WhatsApp
+              <Send size={16} /> {copy.sendWhatsApp}
             </button>
             <button 
               type="button" 
               onClick={() => handleAction('email')}
               className="btn btn-institutional flex-1 min-w-[200px]"
             >
-              <Mail size={16} /> Enviar via E-mail
+              <Mail size={16} /> {copy.sendEmail}
             </button>
             <button 
               type="button" 
               onClick={() => handleAction('download')}
               className="btn bg-neutral-100 text-neutral-700 hover:bg-neutral-200 flex-1 min-w-[200px]"
             >
-              <Download size={16} /> Descarregar .TXT
+              <Download size={16} /> {copy.download}
             </button>
           </div>
 

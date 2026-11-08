@@ -48,6 +48,8 @@ import {
 } from '../services/emailService';
 import { getAppointments, Appointment, OFFICIAL_SERVICES } from '../services/appointmentService';
 import { useToast } from '../context/ToastContext';
+import { useLanguage } from '../context/LanguageContext';
+import { systemTranslations } from '../i18n/systemTranslations';
 import { authService, AdminUser } from '../services/authService';
 import {
   createSiteBackup,
@@ -74,6 +76,8 @@ import {
 
 export function DeveloperImageManager() {
   const { success, error } = useToast();
+  const { language } = useLanguage();
+  const copy = systemTranslations[language].developer;
   const [customImages, setCustomImages] = useState<CustomImagesState>(getCustomImages());
   const [selectedTarget, setSelectedTarget] = useState<'heroBanner' | 'logo' | 'aboutOffice' | 'audienceShowcase' | 'gallery'>('audienceShowcase');
   
@@ -135,9 +139,9 @@ export function DeveloperImageManager() {
     calculateStorage();
     getImageStorageUsage()
       .then(setImageStorageUsage)
-      .catch(err => error(err instanceof Error ? err.message : 'Não foi possível consultar o armazenamento de imagens.'));
+      .catch(err => error(err instanceof Error ? err.message : copy.storageUsageError));
     loadBackups().catch(err => {
-      error(err instanceof Error ? err.message : 'Não foi possível carregar os pontos de restauro.');
+      error(err instanceof Error ? err.message : copy.backupLoadError);
     });
     getServiceFeeOverrides()
       .then(overrides => {
@@ -146,7 +150,7 @@ export function DeveloperImageManager() {
           configurableServices.map(service => [service.id, overrides[service.id] || service.fee])
         ));
       })
-      .catch(err => error(err instanceof Error ? err.message : 'Não foi possível carregar os preços dos serviços.'));
+      .catch(err => error(err instanceof Error ? err.message : copy.feeLoadError));
     syncImagesFromSupabase()
       .then(setCustomImages)
       .catch(err => console.error('Could not sync admin images from Supabase:', err));
@@ -156,7 +160,7 @@ export function DeveloperImageManager() {
       setArticles(getCustomArticles());
       calculateStorage();
       getImageStorageUsage().then(setImageStorageUsage).catch(err => {
-        error(err instanceof Error ? err.message : 'Não foi possível consultar o armazenamento de imagens.');
+        error(err instanceof Error ? err.message : copy.storageUsageError);
       });
     };
     window.addEventListener('emdpn_images_updated', handleUpdate);
@@ -181,19 +185,19 @@ export function DeveloperImageManager() {
     try {
       await createSiteBackup(backupLabel.trim() || `Ponto manual - ${new Date().toLocaleString('pt-PT')}`);
       setBackupLabel('');
-      success('Ponto de restauro criado com sucesso.');
+      success(copy.backupCreated);
       loadBackups().catch(err => {
-        error(err instanceof Error ? err.message : 'Não foi possível atualizar a lista de pontos.');
+        error(err instanceof Error ? err.message : copy.backupListError);
       });
     } catch (err) {
-      error(err instanceof Error ? err.message : 'Não foi possível criar o ponto de restauro.');
+      error(err instanceof Error ? err.message : copy.backupCreateError);
     } finally {
       setIsSavingBackup(false);
     }
   };
 
   const handleRestoreBackup = async (backup: SiteBackup) => {
-    if (!confirm(`Restaurar "${backup.label}"? As publicações e imagens atuais serão substituídas. Será guardado um ponto com o estado atual.`)) {
+    if (!confirm(copy.restoreConfirm.replace('{label}', backup.label))) {
       return;
     }
     setIsRestoringBackup(backup.id);
@@ -205,26 +209,26 @@ export function DeveloperImageManager() {
       ]);
       setArticles(restoredArticles);
       setCustomImages(getCustomImages());
-      success('Publicações e imagens restauradas com sucesso.');
+      success(copy.backupRestored);
       loadBackups().catch(err => {
-        error(err instanceof Error ? err.message : 'Não foi possível atualizar a lista de pontos.');
+        error(err instanceof Error ? err.message : copy.backupListError);
       });
     } catch (err) {
-      error(err instanceof Error ? err.message : 'Não foi possível restaurar este ponto.');
+      error(err instanceof Error ? err.message : copy.backupRestoreError);
     } finally {
       setIsRestoringBackup(null);
     }
   };
 
   const handleDeleteBackup = async (backup: SiteBackup) => {
-    if (!confirm(`Apagar permanentemente o ponto de restauro "${backup.label}"? Esta ação não pode ser desfeita.`)) return;
+    if (!confirm(copy.deleteBackupConfirm.replace('{label}', backup.label))) return;
     setDeletingBackup(backup.id);
     try {
       await deleteSiteBackup(backup.id);
       setBackups(current => current.filter(item => item.id !== backup.id));
-      success('Ponto de restauro apagado.');
+      success(copy.backupDeleted);
     } catch (err) {
-      error(err instanceof Error ? err.message : 'Não foi possível apagar este ponto de restauro.');
+      error(err instanceof Error ? err.message : copy.backupDeleteError);
     } finally {
       setDeletingBackup(null);
     }
@@ -236,9 +240,9 @@ export function DeveloperImageManager() {
       const fee = feeDrafts[serviceId]?.trim() || '';
       await saveServiceFeeOverride(serviceId, fee);
       setFeeOverrides(current => ({ ...current, [serviceId]: fee }));
-      success('Preço atualizado na tabela pública e nos novos agendamentos.');
+      success(copy.feeUpdated);
     } catch (err) {
-      error(err instanceof Error ? err.message : 'Não foi possível guardar o preço.');
+      error(err instanceof Error ? err.message : copy.feeSaveError);
     } finally {
       setSavingFee(null);
     }
@@ -248,16 +252,16 @@ export function DeveloperImageManager() {
     try {
       await resetServiceFeeOverride(serviceId);
       const defaultFee = configurableServices.find(service => service.id === serviceId)?.fee;
-      if (!defaultFee) throw new Error('Não foi encontrado o preço padrão deste serviço.');
+      if (!defaultFee) throw new Error(copy.defaultFeeMissing);
       setFeeOverrides(current => {
         const next = { ...current };
         delete next[serviceId];
         return next;
       });
       setFeeDrafts(current => ({ ...current, [serviceId]: defaultFee }));
-      success('Preço padrão restaurado.');
+      success(copy.feeRestored);
     } catch (err) {
-      error(err instanceof Error ? err.message : 'Não foi possível restaurar o preço padrão.');
+      error(err instanceof Error ? err.message : copy.feeRestoreError);
     }
   };
 
@@ -272,11 +276,11 @@ export function DeveloperImageManager() {
   const handleCreateAdmin = async (event: React.FormEvent) => {
     event.preventDefault();
     if (adminPassword !== adminPasswordConfirm) {
-      error('As palavras-passe não coincidem.');
+      error(copy.passwordMismatch);
       return;
     }
     if (!hasStrongPassword(adminPassword)) {
-      error('Use pelo menos 12 caracteres, incluindo maiúscula, minúscula, número e símbolo.');
+      error(copy.weakPassword);
       return;
     }
     setIsManagingAccount(true);
@@ -285,23 +289,23 @@ export function DeveloperImageManager() {
       setAdminEmail('');
       setAdminPassword('');
       setAdminPasswordConfirm('');
-      success(`Conta de ${staffRole === 'admin' ? 'administrador' : 'secretaria'} criada. A pessoa já pode iniciar sessão.`);
+      success(copy.accountCreated.replace('{role}', staffRole === 'admin' ? copy.adminRole : copy.secretaryRole));
     } catch (err) {
-      error(err instanceof Error ? err.message : 'Não foi possível criar a conta.');
+      error(err instanceof Error ? err.message : copy.accountCreateError);
     } finally {
       setIsManagingAccount(false);
     }
   };
 
   const handleCleanImageStorage = async () => {
-    if (!confirm('Remover permanentemente imagens do armazenamento que não são usadas pelo site nem por pontos de restauro?')) return;
+    if (!confirm(copy.cleanStorageConfirm)) return;
     setIsCleaningStorage(true);
     try {
       const removed = await deleteUnusedStoredImages();
       setImageStorageUsage(await getImageStorageUsage());
-      success(`${removed} imagem(ns) sem uso removida(s) do armazenamento.`);
+      success(copy.storageCleaned.replace('{count}', String(removed)));
     } catch (err) {
-      error(err instanceof Error ? err.message : 'Não foi possível limpar as imagens sem uso.');
+      error(err instanceof Error ? err.message : copy.clearStorageError);
     } finally {
       setIsCleaningStorage(false);
     }
@@ -310,11 +314,11 @@ export function DeveloperImageManager() {
   const handleChangePassword = async (event: React.FormEvent) => {
     event.preventDefault();
     if (newPassword !== newPasswordConfirm) {
-      error('As novas palavras-passe não coincidem.');
+      error(copy.passwordRequirements);
       return;
     }
     if (!hasStrongPassword(newPassword)) {
-      error('Use pelo menos 12 caracteres, incluindo maiúscula, minúscula, número e símbolo.');
+      error(copy.weakPassword);
       return;
     }
     setIsManagingAccount(true);
@@ -323,9 +327,9 @@ export function DeveloperImageManager() {
       setCurrentPassword('');
       setNewPassword('');
       setNewPasswordConfirm('');
-      success('Palavra-passe alterada com sucesso.');
+      success(copy.passwordChanged);
     } catch (err) {
-      error(err instanceof Error ? err.message : 'Não foi possível alterar a palavra-passe.');
+      error(err instanceof Error ? err.message : copy.passwordChangeError);
     } finally {
       setIsManagingAccount(false);
     }
@@ -339,11 +343,11 @@ export function DeveloperImageManager() {
       await new Promise((resolve) => setTimeout(resolve, 1200));
       const res = clearUnusedImages();
       setCacheMessage(res.message);
-      success('Cache de imagens limpo com sucesso!');
+      success(copy.cacheCleared);
       calculateStorage();
     } catch (err) {
-      setCacheMessage('Erro ao limpar o cache. Tente novamente.');
-      error('Erro ao limpar o cache.');
+      setCacheMessage(copy.cacheClearError);
+      error(copy.cacheClearError);
     } finally {
       setLoadingCache(false);
     }
@@ -359,7 +363,7 @@ export function DeveloperImageManager() {
     if (!file) return;
 
     if (!['image/jpeg', 'image/png', 'image/webp'].includes(file.type)) {
-      error('Selecione uma imagem JPG, PNG ou WEBP. Vídeos e outros formatos não são aceites.');
+      error(copy.invalidImage);
       return;
     }
 
@@ -373,10 +377,10 @@ export function DeveloperImageManager() {
       if (dataUrl.startsWith('data:image/webp')) {
         const base64 = dataUrl.split(',')[1] || '';
         const sizeKb = Math.round(base64.length * 0.75 / 1024);
-        success(`Imagem comprimida para cerca de ${sizeKb} KB. Clique em "Aplicar no Portal" para confirmar.`);
+        success(copy.imageCompressed.replace('{size}', String(sizeKb)));
       }
     } catch (err: any) {
-      error(err.message || 'Erro ao processar imagem.');
+      error(err.message || copy.imageProcessError);
     } finally {
       setIsProcessing(false);
     }
@@ -384,7 +388,7 @@ export function DeveloperImageManager() {
 
   const handleApplyImage = async () => {
     if (!previewDataUrl) {
-      error('Nenhuma imagem selecionada. Escolha uma imagem do seu computador primeiro.');
+      error(copy.noImageSelected);
       return;
     }
 
@@ -392,16 +396,16 @@ export function DeveloperImageManager() {
     try {
       if (selectedTarget === 'gallery') {
         await addGalleryPhoto(previewDataUrl);
-        success('Foto adicionada à galeria oficial do portal com sucesso!');
+        success(copy.galleryImageAdded);
       } else {
         await setCustomImage(selectedTarget, previewDataUrl);
         const labels: Record<string, string> = {
-          heroBanner: 'Banner Principal da Página Inicial',
-          audienceShowcase: 'Segunda Imagem da Página Inicial (A Quem se Destina / Atendimento Consular)',
-          logo: 'Selo / Brasão da República da Guiné-Bissau',
-          aboutOffice: 'Fotografia da Equipa / Escritório'
+          heroBanner: copy.heroTarget,
+          audienceShowcase: copy.audienceTarget,
+          logo: copy.logoTarget,
+          aboutOffice: copy.officeTarget
         };
-        success(`Imagem aplicada com sucesso em: ${labels[selectedTarget]}!`);
+        success(copy.imageApplied.replace('{target}', labels[selectedTarget]));
       }
       setPreviewDataUrl(null);
       setSelectedFile(null);
@@ -409,7 +413,7 @@ export function DeveloperImageManager() {
       calculateStorage();
       setImageStorageUsage(await getImageStorageUsage());
     } catch (err: any) {
-      error(err.message || 'Erro ao salvar imagem.');
+      error(err.message || copy.imageSaveError);
     } finally {
       setIsSavingImage(false);
     }
@@ -418,48 +422,48 @@ export function DeveloperImageManager() {
   const handleResetSingleImage = async (key: 'heroBanner' | 'logo' | 'aboutOffice') => {
     try {
       await resetImageToDefault(key);
-      success('Imagem restaurada para o padrão oficial original.');
+      success(copy.imageRestored);
       calculateStorage();
     } catch (err) {
-      error(err instanceof Error ? err.message : 'Não foi possível restaurar a imagem.');
+      error(err instanceof Error ? err.message : copy.singleImageRestoreError);
     }
   };
 
   const handleResetAll = async () => {
-    if (confirm('Tem a certeza que deseja restaurar todas as imagens do portal para os padrões de fábrica?')) {
+    if (confirm(copy.confirmResetImages)) {
       try {
         await resetAllImages();
-        success('Todas as imagens foram restauradas com sucesso.');
+        success(copy.allImagesRestored);
         calculateStorage();
       } catch (err) {
-        error(err instanceof Error ? err.message : 'Não foi possível restaurar as imagens.');
+        error(err instanceof Error ? err.message : copy.resetImagesError);
       }
     }
   };
 
   const handleDeleteArticle = async (id?: string) => {
     if (!id) return;
-    if (confirm('Deseja apagar esta publicação do portal?')) {
+    if (confirm(copy.deleteArticleConfirm)) {
       try {
         await deleteArticle(id);
         setArticles(getCustomArticles());
-        success('Publicação apagada com sucesso do portal.');
+        success(copy.articleDeleted);
         calculateStorage();
       } catch (err) {
-        error(err instanceof Error ? err.message : 'Não foi possível apagar a publicação.');
+        error(err instanceof Error ? err.message : copy.deleteArticleError);
       }
     }
   };
 
   const handleClearAllArticles = async () => {
-    if (confirm('Tem a certeza que deseja apagar todas as publicações personalizadas?')) {
+    if (confirm(copy.clearAllArticlesConfirm)) {
       try {
         await clearAllArticles();
         setArticles([]);
-        success('Todas as publicações foram removidas.');
+        success(copy.allArticlesDeleted);
         calculateStorage();
       } catch (err) {
-        error(err instanceof Error ? err.message : 'Não foi possível remover as publicações.');
+        error(err instanceof Error ? err.message : copy.clearArticlesError);
       }
     }
   };
@@ -488,7 +492,7 @@ export function DeveloperImageManager() {
       const res = await sendAppointmentConfirmationEmail(targetApt);
       success(res.message);
     } catch {
-      error('Erro ao testar envio de e-mail.');
+      error(copy.testEmailError);
     }
   };
 
@@ -498,22 +502,24 @@ export function DeveloperImageManager() {
       {/* Top Banner / System Health */}
       <div className="bg-primary-950 text-white rounded-2xl p-6 shadow-xl border border-primary-900 flex flex-wrap items-center justify-between gap-4">
         <div>
-          <span className="text-accent-400 text-xs font-bold uppercase tracking-wider block">Área do Desenvolvedor & Gestor de Ativos</span>
-          <h2 className="text-xl sm:text-2xl font-serif font-bold text-white">Seção do Desenvolvedor / Admin</h2>
+          <span className="text-accent-400 text-xs font-bold uppercase tracking-wider block">{copy.eyebrow}</span>
+          <h2 className="text-xl sm:text-2xl font-serif font-bold text-white">{copy.title}</h2>
           <p className="text-neutral-400 text-xs mt-1">
-            Ferramentas de manutenção de sistema, infraestrutura e moderação de conteúdo (Protegido por Autenticação).
+            {copy.description}
           </p>
         </div>
 
         <div className="min-w-[260px] bg-white/10 px-4 py-3 rounded-xl border border-white/15">
           <div className="flex items-center justify-between gap-3">
-            <span className="text-[10px] uppercase font-bold text-neutral-300">Armazenamento de imagens na nuvem</span>
+            <span className="text-[10px] uppercase font-bold text-neutral-300">{copy.cloudStorage}</span>
             <HardDrive size={16} className="text-accent-400" />
           </div>
           <div className="mt-1 text-xs font-mono font-bold text-white">
             {imageStorageUsage
-              ? `${(imageStorageUsage.usedBytes / 1024 / 1024).toFixed(2)} MB usados • ${(imageStorageUsage.remainingBytes / 1024 / 1024).toFixed(2)} MB livres`
-              : 'A consultar...'}
+              ? copy.usedFree
+                .replace('{used}', (imageStorageUsage.usedBytes / 1024 / 1024).toFixed(2))
+                .replace('{free}', (imageStorageUsage.remainingBytes / 1024 / 1024).toFixed(2))
+              : copy.checking}
           </div>
           <div className="mt-2 h-1.5 overflow-hidden rounded-full bg-white/20">
             <div
@@ -522,17 +528,17 @@ export function DeveloperImageManager() {
             />
           </div>
           <div className="mt-2 flex items-center justify-between gap-3">
-            <span className="text-[10px] text-neutral-300">Limite: 100 MB</span>
+            <span className="text-[10px] text-neutral-300">{copy.limit}</span>
             <button
               type="button"
               onClick={handleCleanImageStorage}
               disabled={isCleaningStorage || !imageStorageUsage}
               className="text-[10px] font-bold text-accent-300 hover:text-white disabled:opacity-50"
             >
-              {isCleaningStorage ? 'A libertar...' : 'Libertar espaço'}
+              {isCleaningStorage ? copy.releasing : copy.releaseSpace}
             </button>
           </div>
-          <span className="mt-1 block text-[10px] text-neutral-400">Cache local deste dispositivo: {storageUsageKb} KB</span>
+          <span className="mt-1 block text-[10px] text-neutral-400">{copy.localCache.replace('{size}', String(storageUsageKb))}</span>
         </div>
       </div>
 
@@ -540,28 +546,28 @@ export function DeveloperImageManager() {
         <div className="flex items-start gap-3 pb-4 border-b border-neutral-100">
           <ShieldCheck className="text-primary-700 mt-0.5" size={21} />
           <div>
-            <h3 className="text-lg font-serif font-bold text-primary-950">Segurança e Contas da Equipa</h3>
-            <p className="text-xs text-neutral-500 mt-1">Cada pessoa deve usar o seu próprio e-mail, perfil e palavra-passe forte.</p>
+            <h3 className="text-lg font-serif font-bold text-primary-950">{copy.security}</h3>
+            <p className="text-xs text-neutral-500 mt-1">{copy.securityDescription}</p>
           </div>
         </div>
         <div className="grid lg:grid-cols-2 gap-6 pt-5">
           <form onSubmit={handleCreateAdmin} className="space-y-3">
             <h4 className="text-sm font-bold text-primary-950 flex items-center gap-2">
-              <UserPlus size={16} /> Criar conta de {staffRole === 'admin' ? 'administrador' : 'secretaria'}
+              <UserPlus size={16} /> {copy.createAccount.replace('{role}', staffRole === 'admin' ? copy.adminRole : copy.secretaryRole)}
             </h4>
             <label className="block text-xs font-semibold text-neutral-700">
-              Perfil da conta
+              {copy.accountRole}
               <select
                 value={staffRole}
                 onChange={event => setStaffRole(event.target.value as AdminUser['role'])}
                 className="mt-1 w-full rounded-lg border border-neutral-300 px-3 py-2.5 text-sm"
               >
-                <option value="admin">Administrador</option>
-                <option value="secretaria">Secretaria</option>
+                <option value="admin">{copy.adminRole}</option>
+                <option value="secretaria">{copy.secretaryRole}</option>
               </select>
             </label>
             <label className="block text-xs font-semibold text-neutral-700">
-              E-mail
+              {copy.email}
               <input
                 type="email"
                 required
@@ -572,7 +578,7 @@ export function DeveloperImageManager() {
               />
             </label>
             <label className="block text-xs font-semibold text-neutral-700">
-              Palavra-passe (mínimo 12 caracteres)
+              {copy.passwordMin}
               <input
                 type="password"
                 required
@@ -583,7 +589,7 @@ export function DeveloperImageManager() {
               />
             </label>
             <label className="block text-xs font-semibold text-neutral-700">
-              Confirmar palavra-passe
+              {copy.confirmPassword}
               <input
                 type="password"
                 required
@@ -594,16 +600,16 @@ export function DeveloperImageManager() {
               />
             </label>
             <button type="submit" disabled={isManagingAccount} className="btn btn-primary px-4 py-2.5 text-xs disabled:opacity-50">
-              {isManagingAccount ? 'A processar...' : 'Criar conta segura'}
+              {isManagingAccount ? copy.processing : copy.createSecureAccount}
             </button>
           </form>
 
           <form onSubmit={handleChangePassword} className="space-y-3 lg:border-l lg:border-neutral-100 lg:pl-6">
             <h4 className="text-sm font-bold text-primary-950 flex items-center gap-2">
-              <KeyRound size={16} /> Alterar a minha palavra-passe
+              <KeyRound size={16} /> {copy.changeMyPassword}
             </h4>
             <label className="block text-xs font-semibold text-neutral-700">
-              Palavra-passe atual
+              {copy.currentPassword}
               <input
                 type="password"
                 required
@@ -614,7 +620,7 @@ export function DeveloperImageManager() {
               />
             </label>
             <label className="block text-xs font-semibold text-neutral-700">
-              Nova palavra-passe (mínimo 12 caracteres)
+              {copy.newPassword}
               <input
                 type="password"
                 required
@@ -625,7 +631,7 @@ export function DeveloperImageManager() {
               />
             </label>
             <label className="block text-xs font-semibold text-neutral-700">
-              Confirmar nova palavra-passe
+              {copy.confirmNewPassword}
               <input
                 type="password"
                 required
@@ -636,7 +642,7 @@ export function DeveloperImageManager() {
               />
             </label>
             <button type="submit" disabled={isManagingAccount} className="btn btn-primary px-4 py-2.5 text-xs disabled:opacity-50">
-              {isManagingAccount ? 'A processar...' : 'Alterar palavra-passe'}
+              {isManagingAccount ? copy.processing : copy.changePassword}
             </button>
           </form>
         </div>
@@ -647,16 +653,16 @@ export function DeveloperImageManager() {
           <div className="flex items-start gap-3">
             <History className="text-primary-700 mt-0.5" size={21} />
             <div>
-              <h3 className="text-lg font-serif font-bold text-primary-950">Pontos de Restauro do Conteúdo Público</h3>
-              <p className="text-xs text-neutral-500 mt-1">As publicações e as imagens são guardadas automaticamente antes de cada alteração. Agendamentos e dados de requerentes não são incluídos.</p>
+              <h3 className="text-lg font-serif font-bold text-primary-950">{copy.backups}</h3>
+              <p className="text-xs text-neutral-500 mt-1">{copy.backupDescription}</p>
             </div>
           </div>
           <button
             type="button"
-            onClick={() => loadBackups().catch(err => error(err instanceof Error ? err.message : 'Não foi possível atualizar a lista de pontos.'))}
+            onClick={() => loadBackups().catch(err => error(err instanceof Error ? err.message : copy.backupListError))}
             className="text-xs font-bold text-primary-700 hover:text-primary-950"
           >
-            Atualizar lista
+            {copy.refreshList}
           </button>
         </div>
 
@@ -666,17 +672,17 @@ export function DeveloperImageManager() {
             maxLength={200}
             value={backupLabel}
             onChange={event => setBackupLabel(event.target.value)}
-            placeholder="Nome do ponto de restauro (opcional)"
+            placeholder={copy.backupName}
             className="min-w-0 flex-1 rounded-lg border border-neutral-300 px-3 py-2.5 text-sm"
           />
           <button type="submit" disabled={isSavingBackup} className="btn btn-primary justify-center px-4 py-2.5 text-xs disabled:opacity-50">
-            {isSavingBackup ? 'A guardar...' : 'Criar ponto agora'}
+            {isSavingBackup ? copy.saving : copy.createBackup}
           </button>
         </form>
 
         {backups.length === 0 ? (
           <p className="rounded-xl bg-neutral-50 border border-neutral-200 p-4 text-xs text-neutral-500">
-            Ainda não existem pontos de restauro. As próximas alterações criarão cópias automaticamente.
+            {copy.noBackups}
           </p>
         ) : (
           <ul className="divide-y divide-neutral-100 border border-neutral-200 rounded-xl">
@@ -685,7 +691,9 @@ export function DeveloperImageManager() {
                 <div className="min-w-0">
                   <p className="font-semibold text-sm text-neutral-900 break-words">{backup.label}</p>
                   <time className="text-xs text-neutral-500" dateTime={backup.created_at}>
-                    {new Date(backup.created_at).toLocaleString('pt-PT')}
+                    {new Date(backup.created_at).toLocaleString(
+                      language === 'pt' ? 'pt-PT' : language === 'fr' ? 'fr-FR' : language === 'es' ? 'es-ES' : 'en-US'
+                    )}
                   </time>
                 </div>
                 <div className="flex flex-wrap items-center gap-2">
@@ -696,7 +704,7 @@ export function DeveloperImageManager() {
                     className="inline-flex items-center justify-center gap-2 rounded-lg border border-amber-300 bg-amber-50 px-3 py-2 text-xs font-bold text-amber-900 hover:bg-amber-100 disabled:opacity-50"
                   >
                     <RefreshCw size={14} />
-                    {isRestoringBackup === backup.id ? 'A restaurar...' : 'Restaurar'}
+                    {isRestoringBackup === backup.id ? copy.restoring : copy.restore}
                   </button>
                   <button
                     type="button"
@@ -705,7 +713,7 @@ export function DeveloperImageManager() {
                     className="inline-flex items-center justify-center gap-2 rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-xs font-bold text-red-700 hover:bg-red-100 disabled:opacity-50"
                   >
                     <Trash2 size={14} />
-                    {deletingBackup === backup.id ? 'A apagar...' : 'Apagar'}
+                    {deletingBackup === backup.id ? copy.deleting : copy.delete}
                   </button>
                 </div>
               </li>
@@ -718,9 +726,9 @@ export function DeveloperImageManager() {
         <div className="flex items-start gap-3 border-b border-neutral-100 pb-4">
           <FileText className="text-primary-700 mt-0.5" size={21} />
           <div>
-            <h3 className="text-lg font-serif font-bold text-primary-950">Personalizar preços e taxas</h3>
+            <h3 className="text-lg font-serif font-bold text-primary-950">{copy.fees}</h3>
             <p className="text-xs text-neutral-500 mt-1">
-              Os valores guardados são partilhados e aparecem na tabela pública e nos novos pedidos de agendamento.
+              {copy.feesDescription}
             </p>
           </div>
         </div>
@@ -747,7 +755,7 @@ export function DeveloperImageManager() {
                     disabled={savingFee !== null || !(feeDrafts[service.id] || '').trim()}
                     className="btn btn-primary px-4 py-2.5 text-xs disabled:opacity-50"
                   >
-                    {savingFee === service.id ? 'A guardar...' : 'Guardar'}
+                    {savingFee === service.id ? copy.saving : copy.save}
                   </button>
                   {hasOverride && (
                     <button
@@ -756,7 +764,7 @@ export function DeveloperImageManager() {
                       disabled={savingFee !== null}
                       className="rounded-lg border border-neutral-300 px-3 py-2.5 text-xs font-bold text-neutral-700 hover:bg-neutral-50 disabled:opacity-50"
                     >
-                      Padrão
+                      {copy.default}
                     </button>
                   )}
                 </div>
@@ -770,10 +778,10 @@ export function DeveloperImageManager() {
       <div className="bg-white border border-neutral-200 rounded-2xl p-6 sm:p-8 shadow-sm space-y-6">
         <div className="border-b border-neutral-100 pb-4 mb-2">
           <h3 className="text-lg font-serif font-bold text-primary-950 flex items-center gap-2">
-            <Wrench className="text-amber-600" size={20} /> Manutenção Rápida & Moderação
+            <Wrench className="text-amber-600" size={20} /> {copy.maintenance}
           </h3>
           <p className="text-xs text-neutral-500 mt-1">
-            Funções administrativas essenciais para gerir o cache de utilizadores e posts públicos.
+            {copy.maintenanceDescription}
           </p>
         </div>
 
@@ -781,9 +789,9 @@ export function DeveloperImageManager() {
           {/* Bloco 1: Limpeza de Cache */}
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 p-4 bg-neutral-50 rounded-xl border border-neutral-200">
             <div>
-              <h4 className="text-sm font-bold text-primary-950">Cache de Imagens de Utilizadores</h4>
+              <h4 className="text-sm font-bold text-primary-950">{copy.imageCache}</h4>
               <p className="text-xs text-neutral-500 mt-0.5">
-                Remove ficheiros temporários e miniaturas armazenadas em cache para liberar espaço ou atualizar avatares antigos.
+                {copy.imageCacheDescription}
               </p>
             </div>
             <button
@@ -791,7 +799,7 @@ export function DeveloperImageManager() {
               disabled={loadingCache}
               className="px-4 py-2.5 bg-amber-600 hover:bg-amber-700 text-white text-xs font-bold rounded-xl transition-colors disabled:opacity-50 whitespace-nowrap shadow-sm"
             >
-              {loadingCache ? 'Limpando...' : 'Limpar Cache de Imagens'}
+              {loadingCache ? copy.clearing : copy.clearImageCache}
             </button>
           </div>
           {cacheMessage && (
@@ -801,22 +809,22 @@ export function DeveloperImageManager() {
           {/* Bloco 2: Gestão de Posts Públicos */}
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 p-4 bg-neutral-50 rounded-xl border border-neutral-200">
             <div>
-              <h4 className="text-sm font-bold text-primary-950">Gerenciamento de Posts Públicos e Publicações</h4>
+              <h4 className="text-sm font-bold text-primary-950">{copy.posts}</h4>
               <p className="text-xs text-neutral-500 mt-0.5">
-                Acesse o painel de moderação para revisar, ocultar ou excluir publicações da comunidade e comunicados.
+                {copy.postsDescription}
               </p>
             </div>
             <button
               onClick={handleManagePosts}
               className="px-4 py-2.5 bg-primary-800 hover:bg-primary-900 text-white text-xs font-bold rounded-xl transition-colors whitespace-nowrap shadow-sm"
             >
-              Gerenciar Posts
+              {copy.managePosts}
             </button>
           </div>
         </div>
 
         <div className="p-3.5 bg-amber-50 border border-amber-200 rounded-xl text-[11px] text-amber-900 leading-relaxed">
-          🔒 <strong>Nota de Segurança:</strong> Certifique-se de proteger esta seção no seu painel de controle utilizando middlewares de autenticação e verificação de privilégios (isAdmin ou isDeveloper). A execução de ações de limpeza de cache e moderação de dados sensíveis nunca deve ficar exposta a usuários comuns.
+          🔒 <strong>{copy.securityNote}</strong> {copy.securityNoteDescription}
         </div>
       </div>
 
@@ -828,8 +836,8 @@ export function DeveloperImageManager() {
               <Upload size={18} />
             </div>
             <div>
-              <h3 className="font-serif font-bold text-primary-950 text-base">Carregar Nova Imagem do Computador</h3>
-              <p className="text-neutral-500 text-xs">Escolha um ficheiro de imagem e defina onde deseja exibi-lo no site.</p>
+              <h3 className="font-serif font-bold text-primary-950 text-base">{copy.uploadImage}</h3>
+              <p className="text-neutral-500 text-xs">{copy.uploadDescription}</p>
             </div>
           </div>
 
@@ -842,13 +850,13 @@ export function DeveloperImageManager() {
               }}
               className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-neutral-100 hover:bg-neutral-200 text-neutral-700 text-xs font-bold transition-colors"
             >
-              <RefreshCw size={14} /> Limpar Ativos Órfãos
+              <RefreshCw size={14} /> {copy.clearUnused}
             </button>
             <button
               onClick={handleResetAll}
               className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-red-50 hover:bg-red-100 text-red-700 text-xs font-bold transition-colors"
             >
-              <Trash2 size={14} /> Restaurar Padrões de Fábrica
+              <Trash2 size={14} /> {copy.resetFactory}
             </button>
           </div>
         </div>
@@ -857,23 +865,23 @@ export function DeveloperImageManager() {
           <div className="space-y-4">
             <div>
               <label className="block text-xs font-bold text-neutral-700 uppercase tracking-wider mb-1.5">
-                Onde pretende aplicar a imagem? *
+                {copy.imageTarget}
               </label>
               <select
                 value={selectedTarget}
                 onChange={e => setSelectedTarget(e.target.value as any)}
                 className="w-full p-3 bg-neutral-50 border border-neutral-300 rounded-xl text-sm font-semibold text-neutral-900 focus:outline-none focus:ring-2 focus:ring-primary-500"
               >
-                <option value="audienceShowcase">📸 Segunda Imagem da Página Inicial (Secção: A Quem se Destina / Gabinete Notarial)</option>
-                <option value="heroBanner">🖼️ Primeira Imagem / Banner Panorâmico (Página Inicial)</option>
-                <option value="aboutOffice">🏛️ Fotografia da Equipa / Escritório em Safim (Página Sobre Nós)</option>
-                <option value="gallery">📸 Adicionar Foto Nova à Galeria Oficial</option>
+                <option value="audienceShowcase">{copy.audienceTarget}</option>
+                <option value="heroBanner">{copy.heroTarget}</option>
+                <option value="aboutOffice">{copy.officeTarget}</option>
+                <option value="gallery">{copy.galleryTarget}</option>
               </select>
             </div>
 
             <div>
               <label className="block text-xs font-bold text-neutral-700 uppercase tracking-wider mb-1.5">
-                Ficheiro de Imagem do Computador *
+                {copy.imageFile}
               </label>
               <input 
                 type="file"
@@ -889,10 +897,10 @@ export function DeveloperImageManager() {
               >
                 <ImageIcon className="text-primary-600 mb-2 group-hover:scale-110 transition-transform" size={32} />
                 <span className="font-bold text-primary-950 text-sm">
-                  {selectedFile ? selectedFile.name : 'Clique para Escolher Imagem do Computador'}
+                  {selectedFile ? selectedFile.name : copy.chooseImage}
                 </span>
                 <span className="text-xs text-neutral-400 mt-1">
-                  Suporta ficheiros JPG, PNG ou WEBP (Otimização automática ativada)
+                  {copy.imageFormat}
                 </span>
               </label>
             </div>
@@ -903,7 +911,7 @@ export function DeveloperImageManager() {
                 disabled={isProcessing || isSavingImage}
                 className="btn btn-primary w-full py-3.5 text-sm font-bold shadow-md flex items-center justify-center gap-2"
               >
-                <CheckCircle2 size={18} /> {isSavingImage ? 'A guardar no portal...' : 'Aplicar Imagem no Portal Agora'}
+                <CheckCircle2 size={18} /> {isSavingImage ? copy.savingImage : copy.applyImage}
               </button>
             )}
           </div>
@@ -911,15 +919,15 @@ export function DeveloperImageManager() {
           <div className="bg-neutral-50 rounded-2xl border border-neutral-200 p-5 flex flex-col justify-between">
             <div>
               <span className="text-[11px] font-bold text-neutral-500 uppercase tracking-wider block mb-2">
-                Pré-visualização da Imagem
+                {copy.previewImage}
               </span>
               <div className="w-full h-[220px] rounded-xl overflow-hidden bg-neutral-900 border border-neutral-200 flex items-center justify-center relative">
                 {previewDataUrl ? (
-                  <img src={previewDataUrl} alt="Pré-visualização" className="w-full h-full object-contain" />
+                  <img src={previewDataUrl} alt={copy.previewImage} className="w-full h-full object-contain" />
                 ) : (
                   <div className="text-center p-6 text-neutral-500">
                     <ImageIcon className="mx-auto mb-2 opacity-40" size={36} />
-                    <span className="text-xs">Nenhuma imagem carregada para pré-visualização.</span>
+                    <span className="text-xs">{copy.noImagePreview}</span>
                   </div>
                 )}
               </div>
@@ -927,8 +935,8 @@ export function DeveloperImageManager() {
 
             {selectedFile && (
               <div className="mt-3 pt-3 border-t border-neutral-200/80 flex items-center justify-between text-xs text-neutral-600">
-                <span>Ficheiro: <strong>{selectedFile.name}</strong></span>
-                <span>Tamanho: {(selectedFile.size / 1024).toFixed(1)} KB</span>
+                <span>{copy.fileName}: <strong>{selectedFile.name}</strong></span>
+                <span>{copy.fileSize}: {(selectedFile.size / 1024).toFixed(1)} KB</span>
               </div>
             )}
           </div>
@@ -941,8 +949,8 @@ export function DeveloperImageManager() {
           <div className="flex items-center gap-2.5">
             <Megaphone className="text-[#16845B]" size={20} />
             <div>
-              <h3 className="font-serif font-bold text-primary-950 text-base">Publicações e Notícias Ativas ({articles.length})</h3>
-              <p className="text-neutral-500 text-xs">Apague comunicados ou eventos que já não estejam em uso.</p>
+              <h3 className="font-serif font-bold text-primary-950 text-base">{copy.publications} ({articles.length})</h3>
+              <p className="text-neutral-500 text-xs">{copy.publicationsDescription}</p>
             </div>
           </div>
           {articles.length > 0 && (
@@ -950,14 +958,14 @@ export function DeveloperImageManager() {
               onClick={handleClearAllArticles}
               className="px-3 py-1.5 rounded-lg bg-red-50 hover:bg-red-100 text-red-700 text-xs font-bold transition-colors inline-flex items-center gap-1"
             >
-              <Trash2 size={13} /> Apagar Todas as Publicações
+              <Trash2 size={13} /> {copy.clearPublications}
             </button>
           )}
         </div>
 
         {articles.length === 0 ? (
           <div className="text-center py-8 text-neutral-400 bg-neutral-50 rounded-xl border border-neutral-200">
-            Nenhuma publicação personalizada no momento. Use o botão "Publicar Evento / Notícia" no topo para criar uma nova.
+            {copy.noPublications}
           </div>
         ) : (
           <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
@@ -982,7 +990,7 @@ export function DeveloperImageManager() {
                     onClick={() => handleDeleteArticle(art.id)}
                     className="text-red-600 hover:text-red-800 text-xs font-bold flex items-center gap-1 p-1 rounded hover:bg-red-50 transition-colors"
                   >
-                    <Trash2 size={13} /> Apagar Publicação
+                    <Trash2 size={13} /> {copy.deletePublication}
                   </button>
                 </div>
               </div>
@@ -997,8 +1005,8 @@ export function DeveloperImageManager() {
           <div className="flex items-center gap-2.5">
             <Mail className="text-primary-700" size={20} />
             <div>
-              <h3 className="font-serif font-bold text-primary-950 text-base">Registo de E-mails Automáticos de Confirmação</h3>
-              <p className="text-neutral-500 text-xs">Disparados automaticamente para os requerentes após o agendamento.</p>
+              <h3 className="font-serif font-bold text-primary-950 text-base">{copy.emailHistory}</h3>
+              <p className="text-neutral-500 text-xs">{copy.emailHistoryDescription}</p>
             </div>
           </div>
 
@@ -1007,20 +1015,20 @@ export function DeveloperImageManager() {
               onClick={handleSendTestEmail}
               className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-primary-100 hover:bg-primary-200 text-primary-900 text-xs font-bold transition-colors"
             >
-              <Send size={13} /> Enviar E-mail de Teste
+              <Send size={13} /> {copy.sendTestEmail}
             </button>
             {emailLogs.length > 0 && (
               <button
                 onClick={() => {
-                  if (confirm('Deseja limpar todo o histórico de e-mails enviados?')) {
+                  if (confirm(copy.confirmClearEmailHistory)) {
                     clearSentEmailLogs();
                     setEmailLogs([]);
-                    success('Histórico de e-mails limpo.');
+                    success(copy.emailHistoryCleared);
                   }
                 }}
                 className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-neutral-100 hover:bg-neutral-200 text-neutral-700 text-xs font-bold transition-colors"
               >
-                <Trash2 size={13} /> Limpar Histórico
+                <Trash2 size={13} /> {copy.clearHistory}
               </button>
             )}
           </div>
@@ -1028,19 +1036,19 @@ export function DeveloperImageManager() {
 
         {emailLogs.length === 0 ? (
           <div className="text-center py-8 text-neutral-400 bg-neutral-50 rounded-xl border border-neutral-200 text-xs">
-            Nenhum e-mail de confirmação registado ainda. Quando um requerente fizer um agendamento, o e-mail será emitido e arquivado aqui automaticamente.
+            {copy.noEmailHistory}
           </div>
         ) : (
           <div className="overflow-x-auto">
             <table className="w-full text-left border-collapse text-xs">
               <thead>
                 <tr className="bg-neutral-50 border-b border-neutral-200 text-neutral-600 uppercase font-bold text-[11px]">
-                  <th className="py-2.5 px-3">Data & Hora</th>
-                  <th className="py-2.5 px-3">Protocolo</th>
-                  <th className="py-2.5 px-3">Destinatário</th>
-                  <th className="py-2.5 px-3">Assunto</th>
-                  <th className="py-2.5 px-3">Estado</th>
-                  <th className="py-2.5 px-3 text-right">Ações</th>
+                  <th className="py-2.5 px-3">{copy.dateTime}</th>
+                  <th className="py-2.5 px-3">{copy.protocol}</th>
+                  <th className="py-2.5 px-3">{copy.recipient}</th>
+                  <th className="py-2.5 px-3">{copy.subject}</th>
+                  <th className="py-2.5 px-3">{copy.status}</th>
+                  <th className="py-2.5 px-3 text-right">{copy.actions}</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-neutral-100">
@@ -1062,7 +1070,7 @@ export function DeveloperImageManager() {
                       <button
                         onClick={() => setViewingEmail(log)}
                         className="p-1.5 text-primary-700 hover:bg-primary-50 rounded-md transition-colors"
-                        title="Ver conteúdo do e-mail"
+                        title={copy.viewEmail}
                       >
                         <Eye size={15} />
                       </button>
@@ -1072,7 +1080,7 @@ export function DeveloperImageManager() {
                           setEmailLogs(getSentEmailLogs());
                         }}
                         className="p-1.5 text-red-600 hover:bg-red-50 rounded-md transition-colors"
-                        title="Excluir registo"
+                        title={copy.deleteRecord}
                       >
                         <Trash2 size={15} />
                       </button>
@@ -1091,7 +1099,7 @@ export function DeveloperImageManager() {
           <div className="bg-white rounded-2xl max-w-2xl w-full p-6 shadow-2xl border border-neutral-200 animate-fade-in flex flex-col max-h-[85vh]">
             <div className="flex items-center justify-between pb-3 border-b border-neutral-200 shrink-0">
               <div>
-                <span className="text-[10px] uppercase font-bold text-accent-700">Registo Oficial de E-mail</span>
+                <span className="text-[10px] uppercase font-bold text-accent-700">{copy.officialEmailRecord}</span>
                 <h4 className="font-serif font-bold text-base text-primary-950">{viewingEmail.subject}</h4>
               </div>
               <button 
@@ -1103,9 +1111,9 @@ export function DeveloperImageManager() {
             </div>
 
             <div className="py-3 text-xs text-neutral-600 border-b border-neutral-100 space-y-1 shrink-0">
-              <div><strong>Para:</strong> {viewingEmail.recipientName} ({viewingEmail.recipientEmail})</div>
-              <div><strong>CC Oficial:</strong> {viewingEmail.officialCc}</div>
-              <div><strong>Enviado em:</strong> {viewingEmail.sentAt}</div>
+              <div><strong>{copy.to}</strong> {viewingEmail.recipientName} ({viewingEmail.recipientEmail})</div>
+              <div><strong>{copy.officialCc}</strong> {viewingEmail.officialCc}</div>
+              <div><strong>{copy.sentAt}</strong> {viewingEmail.sentAt}</div>
             </div>
 
             <div className="overflow-y-auto flex-1 p-4 bg-neutral-50 rounded-xl my-3 font-mono text-xs text-neutral-800 whitespace-pre-wrap">
@@ -1117,7 +1125,7 @@ export function DeveloperImageManager() {
                 onClick={() => setViewingEmail(null)}
                 className="px-5 py-2 bg-neutral-100 hover:bg-neutral-200 text-neutral-800 rounded-xl font-bold text-xs"
               >
-                Fechar
+                {copy.close}
               </button>
             </div>
           </div>
