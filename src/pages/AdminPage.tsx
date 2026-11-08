@@ -269,7 +269,7 @@ export function AdminPage() {
           </div>
 
           <div className="flex items-center gap-3 flex-wrap">
-            {currentUser?.role === 'admin' && <button
+            {currentUser && <button
               onClick={() => setShowPublishModal(true)}
               className="inline-flex items-center gap-1.5 bg-[#16845B] hover:bg-[#126b48] text-white px-3.5 py-1.5 rounded-lg text-xs font-bold transition-all shadow-sm"
             >
@@ -504,7 +504,7 @@ export function AdminPage() {
                         </span>
                       </td>
                       <td className="py-3.5 px-4 whitespace-nowrap">
-                        {currentUser?.role === 'admin' ? <select
+                        {currentUser ? <select
                           value={apt.status}
                           onChange={e => void handleStatusChange(apt.id, e.target.value as Appointment['status'])}
                           className={`text-[11px] font-extrabold uppercase rounded-lg px-2.5 py-1 border focus:outline-none cursor-pointer ${

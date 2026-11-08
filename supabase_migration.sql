@@ -41,12 +41,36 @@ DROP POLICY IF EXISTS "Allow public read articles" ON public.articles;
 DROP POLICY IF EXISTS "Allow write articles" ON public.articles;
 DROP POLICY IF EXISTS "Public can read articles" ON public.articles;
 DROP POLICY IF EXISTS "Admins can manage articles" ON public.articles;
+DROP POLICY IF EXISTS "Staff can publish articles" ON public.articles;
+DROP POLICY IF EXISTS "Admins can update articles" ON public.articles;
+DROP POLICY IF EXISTS "Admins can delete articles" ON public.articles;
 CREATE POLICY "Public can read articles"
   ON public.articles FOR SELECT TO anon, authenticated USING (true);
-CREATE POLICY "Admins can manage articles"
-  ON public.articles FOR ALL TO authenticated
+CREATE POLICY "Staff can publish articles"
+  ON public.articles FOR INSERT TO authenticated
+  WITH CHECK ((auth.jwt() -> 'app_metadata' ->> 'role') IN ('admin', 'secretaria'));
+CREATE POLICY "Admins can update articles"
+  ON public.articles FOR UPDATE TO authenticated
   USING ((auth.jwt() -> 'app_metadata' ->> 'role') = 'admin')
   WITH CHECK ((auth.jwt() -> 'app_metadata' ->> 'role') = 'admin');
+CREATE POLICY "Admins can delete articles"
+  ON public.articles FOR DELETE TO authenticated
+  USING ((auth.jwt() -> 'app_metadata' ->> 'role') = 'admin');
+
+DROP POLICY IF EXISTS "Admins can upload site images" ON storage.objects;
+DROP POLICY IF EXISTS "Staff can upload publication images" ON storage.objects;
+CREATE POLICY "Staff can upload publication images"
+  ON storage.objects FOR INSERT TO authenticated
+  WITH CHECK (
+    bucket_id = 'site-images'
+    AND (
+      (auth.jwt() -> 'app_metadata' ->> 'role') = 'admin'
+      OR (
+        (auth.jwt() -> 'app_metadata' ->> 'role') = 'secretaria'
+        AND name LIKE 'publication-%'
+      )
+    )
+  );
 
 CREATE TABLE IF NOT EXISTS public.site_visitors (
   visitor_id UUID PRIMARY KEY,
@@ -265,10 +289,13 @@ CREATE TABLE IF NOT EXISTS public.appointments (
 ALTER TABLE public.appointments ENABLE ROW LEVEL SECURITY;
 REVOKE ALL ON TABLE public.appointments FROM anon, authenticated;
 GRANT INSERT ON TABLE public.appointments TO authenticated;
-GRANT SELECT, UPDATE, DELETE ON TABLE public.appointments TO authenticated;
+GRANT SELECT, DELETE ON TABLE public.appointments TO authenticated;
+REVOKE UPDATE ON TABLE public.appointments FROM authenticated;
+GRANT UPDATE (status) ON TABLE public.appointments TO authenticated;
 DROP POLICY IF EXISTS "Public can submit pending appointments" ON public.appointments;
 DROP POLICY IF EXISTS "Staff can view appointments" ON public.appointments;
 DROP POLICY IF EXISTS "Admins can update appointments" ON public.appointments;
+DROP POLICY IF EXISTS "Staff can update appointment status" ON public.appointments;
 DROP POLICY IF EXISTS "Admins can delete appointments" ON public.appointments;
 CREATE POLICY "Public can submit pending appointments"
   ON public.appointments FOR INSERT TO authenticated
@@ -276,10 +303,10 @@ CREATE POLICY "Public can submit pending appointments"
 CREATE POLICY "Staff can view appointments"
   ON public.appointments FOR SELECT TO authenticated
   USING ((auth.jwt() -> 'app_metadata' ->> 'role') IN ('admin', 'secretaria'));
-CREATE POLICY "Admins can update appointments"
+CREATE POLICY "Staff can update appointment status"
   ON public.appointments FOR UPDATE TO authenticated
-  USING ((auth.jwt() -> 'app_metadata' ->> 'role') = 'admin')
-  WITH CHECK ((auth.jwt() -> 'app_metadata' ->> 'role') = 'admin');
+  USING ((auth.jwt() -> 'app_metadata' ->> 'role') IN ('admin', 'secretaria'))
+  WITH CHECK ((auth.jwt() -> 'app_metadata' ->> 'role') IN ('admin', 'secretaria'));
 CREATE POLICY "Admins can delete appointments"
   ON public.appointments FOR DELETE TO authenticated
   USING ((auth.jwt() -> 'app_metadata' ->> 'role') = 'admin');

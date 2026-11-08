@@ -37,12 +37,21 @@ DROP POLICY IF EXISTS "Allow public read articles" ON public.articles;
 DROP POLICY IF EXISTS "Allow write articles" ON public.articles;
 DROP POLICY IF EXISTS "Public can read articles" ON public.articles;
 DROP POLICY IF EXISTS "Admins can manage articles" ON public.articles;
+DROP POLICY IF EXISTS "Staff can publish articles" ON public.articles;
+DROP POLICY IF EXISTS "Admins can update articles" ON public.articles;
+DROP POLICY IF EXISTS "Admins can delete articles" ON public.articles;
 CREATE POLICY "Public can read articles"
   ON public.articles FOR SELECT TO anon, authenticated USING (true);
-CREATE POLICY "Admins can manage articles"
-  ON public.articles FOR ALL TO authenticated
+CREATE POLICY "Staff can publish articles"
+  ON public.articles FOR INSERT TO authenticated
+  WITH CHECK ((auth.jwt() -> 'app_metadata' ->> 'role') IN ('admin', 'secretaria'));
+CREATE POLICY "Admins can update articles"
+  ON public.articles FOR UPDATE TO authenticated
   USING ((auth.jwt() -> 'app_metadata' ->> 'role') = 'admin')
   WITH CHECK ((auth.jwt() -> 'app_metadata' ->> 'role') = 'admin');
+CREATE POLICY "Admins can delete articles"
+  ON public.articles FOR DELETE TO authenticated
+  USING ((auth.jwt() -> 'app_metadata' ->> 'role') = 'admin');
 
 INSERT INTO storage.buckets (id, name, public, file_size_limit, allowed_mime_types)
 VALUES ('site-images', 'site-images', true, 5242880, ARRAY['image/jpeg', 'image/png', 'image/webp'])
@@ -55,14 +64,21 @@ DROP POLICY IF EXISTS "Public can view site images" ON storage.objects;
 DROP POLICY IF EXISTS "Admins can upload site images" ON storage.objects;
 DROP POLICY IF EXISTS "Admins can update site images" ON storage.objects;
 DROP POLICY IF EXISTS "Admins can delete site images" ON storage.objects;
+DROP POLICY IF EXISTS "Staff can upload publication images" ON storage.objects;
 CREATE POLICY "Public can view site images"
   ON storage.objects FOR SELECT TO anon, authenticated
   USING (bucket_id = 'site-images');
-CREATE POLICY "Admins can upload site images"
+CREATE POLICY "Staff can upload publication images"
   ON storage.objects FOR INSERT TO authenticated
   WITH CHECK (
     bucket_id = 'site-images'
-    AND (auth.jwt() -> 'app_metadata' ->> 'role') = 'admin'
+    AND (
+      (auth.jwt() -> 'app_metadata' ->> 'role') = 'admin'
+      OR (
+        (auth.jwt() -> 'app_metadata' ->> 'role') = 'secretaria'
+        AND name LIKE 'publication-%'
+      )
+    )
   );
 CREATE POLICY "Admins can update site images"
   ON storage.objects FOR UPDATE TO authenticated

@@ -689,12 +689,12 @@ export function Home() {
       <Gallery />
 
       {/* CTA final */}
-      <section className="cta-gradient text-white py-16 text-center px-6">
+      <section className="bg-neutral-100 text-neutral-950 py-16 text-center px-6">
         <div className="max-w-2xl mx-auto">
-          <h2 className="text-2xl sm:text-4xl font-serif font-bold text-white mb-4">
+          <h2 className="text-2xl sm:text-4xl font-serif font-extrabold text-black mb-4">
             Pronto para Dar Início ao Seu Processo?
           </h2>
-          <p className="text-neutral-300 text-sm sm:text-base mb-8 font-light">
+          <p className="text-neutral-800 text-sm sm:text-base mb-8 font-semibold">
             Faça hoje o seu agendamento ou entre em contacto direto com a nossa equipa em Bissau.
           </p>
           <div className="flex flex-wrap gap-4 justify-center">

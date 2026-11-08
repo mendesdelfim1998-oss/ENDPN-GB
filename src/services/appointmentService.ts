@@ -488,8 +488,8 @@ export async function findAppointmentByProtocol(query: string): Promise<Appointm
 }
 
 export async function updateAppointmentStatus(id: string, status: Appointment['status']): Promise<void> {
-  if (!authService.isAdmin()) {
-    throw new Error('Apenas um administrador pode alterar o estado dos agendamentos.');
+  if (!authService.isAuthenticated()) {
+    throw new Error('Inicie sessão como administrador ou secretaria para alterar o estado dos agendamentos.');
   }
   const { data, error } = await supabase
     .from('appointments')

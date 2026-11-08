@@ -41,13 +41,14 @@ Publicações e imagens do painel são guardadas no Supabase, para que todos os 
 
 4. Termine e inicie novamente a sessão no site. A conta deve usar o e-mail e a palavra-passe definidos no Supabase.
 
-O script configura leitura pública das publicações e imagens e permite alterações apenas a contas autenticadas com `app_metadata.role = 'admin'`. As imagens carregadas são guardadas no bucket público `site-images` (máximo de 5 MB). Nunca coloque uma chave `service_role` ou `SUPABASE_SECRET_KEY` no frontend ou nas variáveis `VITE_*`.
+O script configura leitura pública das publicações e imagens. Administradores podem gerir publicações; a Secretaria pode criar novas publicações e carregar as respetivas imagens, sem editar ou apagar publicações existentes. As imagens carregadas são guardadas no bucket público `site-images` (máximo de 5 MB). Nunca coloque uma chave `service_role` ou `SUPABASE_SECRET_KEY` no frontend ou nas variáveis `VITE_*`.
 
 Se o site usar outro projeto Supabase, configure `VITE_SUPABASE_URL` e `VITE_SUPABASE_ANON_KEY` nas variáveis de ambiente da Vercel e publique novamente.
+O `vercel.json` inclui o fallback SPA necessário para que atualizar diretamente páginas como `/contactos`, `/noticias` ou `/admin` não devolva um 404 da Vercel.
 
 ### Contador de visitantes, contas e pontos de restauro
 
-Para atualizar um projeto Supabase já configurado, execute novamente `supabase_migration.sql` no SQL Editor. O script é repetível e acrescenta o contador global, os pontos de restauro, preços de serviço partilhados e a gestão de agendamentos. Administradores podem restaurar ou apagar pontos de restauro individuais e personalizar os preços da tabela de serviços; as alterações de preço também são usadas nos novos pedidos. Agendamentos novos começam como `pendente`; apenas contas `admin` podem mudar o estado ou remover registos. Contas `secretaria` podem consultar os agendamentos, mas não veem a área do desenvolvedor. O acompanhamento público aceita o protocolo ou o telefone registado no pedido e devolve apenas os dados básicos do atendimento. Os dados de requerentes não são incluídos nos pontos de restauro.
+Para atualizar um projeto Supabase já configurado, execute novamente `supabase_migration.sql` no SQL Editor. O script é repetível e acrescenta o contador global, os pontos de restauro, preços de serviço partilhados e a gestão de agendamentos. Administradores podem restaurar ou apagar pontos de restauro individuais e personalizar os preços da tabela de serviços; as alterações de preço também são usadas nos novos pedidos. Agendamentos novos começam como `pendente`; contas `admin` e `secretaria` podem alterar somente o estado, e apenas `admin` pode apagar agendamentos. Contas `secretaria` podem publicar novas notícias e carregar imagens, mas não editar/apagar publicações existentes nem aceder à área do desenvolvedor. O acompanhamento público aceita o protocolo ou o telefone registado no pedido e devolve apenas os dados básicos do atendimento. Os dados de requerentes não são incluídos nos pontos de restauro.
 
 Depois, publique a Edge Function `clever-function` que cria contas administrativas:
 

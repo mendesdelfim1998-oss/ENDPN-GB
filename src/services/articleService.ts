@@ -73,8 +73,9 @@ export async function syncArticlesFromSupabase(): Promise<ArticleItem[]> {
 }
 
 export async function saveArticle(article: Omit<ArticleItem, 'id'> & { id?: string }): Promise<ArticleItem> {
-  if (!authService.isAdmin()) {
-    throw new Error('Inicie sessão como administrador para publicar.');
+  const user = authService.getCurrentUser();
+  if (!user) {
+    throw new Error('Inicie sessão como administrador ou secretaria para publicar.');
   }
 
   const savedArticle: ArticleItem = {
@@ -88,8 +89,10 @@ export async function saveArticle(article: Omit<ArticleItem, 'id'> & { id?: stri
   if (savedArticle.imageUrl?.startsWith('data:image/')) {
     savedArticle.imageUrl = await uploadImageToStorage(savedArticle.imageUrl);
   }
-  await createSiteBackup(`Antes de publicar: ${savedArticle.title}`);
-  const { error } = await supabase.from('articles').upsert({
+  if (user.role === 'admin') {
+    await createSiteBackup(`Antes de publicar: ${savedArticle.title}`);
+  }
+  const articleRecord = {
     id: savedArticle.id,
     title: savedArticle.title,
     date: savedArticle.date,
@@ -97,7 +100,11 @@ export async function saveArticle(article: Omit<ArticleItem, 'id'> & { id?: stri
     excerpt: savedArticle.excerpt,
     category: savedArticle.category,
     image_url: savedArticle.imageUrl || null
-  });
+  };
+  const articleQuery = supabase.from('articles');
+  const { error } = await (user.role === 'admin'
+    ? articleQuery.upsert(articleRecord)
+    : articleQuery.insert(articleRecord));
 
   if (error) {
     console.error('Could not save article to Supabase:', error);

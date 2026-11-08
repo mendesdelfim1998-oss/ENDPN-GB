@@ -42,12 +42,20 @@ function requireAdmin(): void {
   }
 }
 
+function requirePublisher(): 'admin' | 'secretaria' {
+  const role = authService.getCurrentUser()?.role;
+  if (!role) {
+    throw new Error('Inicie sessão como administrador ou secretaria para carregar uma imagem de publicação.');
+  }
+  return role;
+}
+
 function isSyncedImageKey(key: string): key is SyncedImageKey {
   return key === 'heroBanner' || key === 'aboutOffice' || key === 'audienceShowcase';
 }
 
 export async function uploadImageToStorage(dataUrl: string): Promise<string> {
-  requireAdmin();
+  const role = requirePublisher();
   if (!dataUrl.startsWith('data:image/')) {
     if (/^https?:\/\//i.test(dataUrl) || dataUrl.startsWith('/')) return dataUrl;
     throw new Error('A imagem selecionada não é válida.');
@@ -63,7 +71,10 @@ export async function uploadImageToStorage(dataUrl: string): Promise<string> {
     throw new Error(`O armazenamento de imagens está cheio. Remova imagens sem uso para libertar espaço.`);
   }
   const extension = blob.type === 'image/png' ? 'png' : blob.type === 'image/webp' ? 'webp' : 'jpg';
-  const path = `${crypto.randomUUID()}.${extension}`;
+  const imageId = crypto.randomUUID();
+  const path = role === 'secretaria'
+    ? `publication-${imageId}.${extension}`
+    : `${imageId}.${extension}`;
   const { error } = await supabase.storage
     .from(IMAGE_BUCKET)
     .upload(path, blob, { contentType: blob.type, cacheControl: '3600', upsert: false });
@@ -84,7 +95,7 @@ export interface ImageStorageUsage {
 }
 
 async function listStoredImages(): Promise<Array<{ name: string; size: number }>> {
-  requireAdmin();
+  requirePublisher();
   const images: Array<{ name: string; size: number }> = [];
   for (let offset = 0; ; offset += 1000) {
     const { data, error } = await supabase.storage.from(IMAGE_BUCKET).list('', {
