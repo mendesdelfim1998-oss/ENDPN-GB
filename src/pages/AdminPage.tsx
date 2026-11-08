@@ -76,17 +76,30 @@ export function AdminPage() {
 
   useEffect(() => {
     const verifySessionAndLoad = async () => {
+      let user: Awaited<ReturnType<typeof authService.getVerifiedCurrentUser>>;
       try {
-        const user = await authService.getVerifiedCurrentUser();
-        if (!user) {
-          navigate('/login');
-          return;
-        }
-        setCurrentUser(user);
-        if (user.role !== 'admin' && initialTab === 'desenvolvedor') {
-          setActiveTab('agendamentos');
-          setSearchParams({});
-        }
+        user = await authService.getVerifiedCurrentUser();
+      } catch (err) {
+        console.error('Could not verify administrator session:', err);
+        setCurrentUser(null);
+        navigate('/login', { replace: true });
+        error(err instanceof Error ? err.message : 'Não foi possível confirmar a sessão. Inicie sessão novamente.');
+        return;
+      }
+
+      if (!user) {
+        setCurrentUser(null);
+        navigate('/login', { replace: true });
+        return;
+      }
+
+      setCurrentUser(user);
+      if (user.role !== 'admin' && initialTab === 'desenvolvedor') {
+        setActiveTab('agendamentos');
+        setSearchParams({});
+      }
+
+      try {
         await loadData();
         const visitors = await getSiteVisitorCount();
         setStats(current => ({ ...current, visitors }));
