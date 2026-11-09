@@ -445,11 +445,12 @@ __________________________________________________`
               id="official-transcription"
               className="bg-white p-8 sm:p-12 rounded-2xl border border-neutral-300 shadow-xl font-serif text-neutral-900 leading-relaxed text-sm sm:text-base relative"
             >
+              <p className="mb-5 text-xs font-sans text-neutral-600">{dl.transcription.transcriptionDisclaimer}</p>
               {/* Official Header */}
               <div className="text-center border-b-2 border-neutral-900/10 pb-6 mb-8">
                 <div className="flex justify-between items-start text-xs font-sans text-neutral-500 mb-2">
-                  <span>CONTA BAO: <strong>126999010444</strong></span>
-                  <span>COFRE GERAL DA JUSTIÇA</span>
+                  <span>{dl.transcription.account} <strong>126999010444</strong></span>
+                  <span>{dl.transcription.treasury}</span>
                 </div>
                 <div className="flex items-center justify-center gap-3 sm:gap-4 mb-3 flex-wrap">
                   <span className="font-serif italic font-bold text-base sm:text-2xl tracking-wide text-primary-950">
@@ -458,7 +459,7 @@ __________________________________________________`
                   <div className="w-14 h-14 sm:w-16 sm:h-16 flex items-center justify-center drop-shadow-md bg-transparent">
                     <img 
                       src="/assets/aistudio/Emblema_Her_ldico_da_Luta_e_Progresso_f5f56753.png" 
-                      alt="Brasão da República da Guiné-Bissau" 
+                      alt={dl.transcription.emblemAlt}
                       className="w-full h-full object-contain filter drop-shadow"
                     />
                   </div>
@@ -466,12 +467,12 @@ __________________________________________________`
                     {t.hero.republicSuffix}
                   </span>
                 </div>
-                <h5 className="font-sans font-bold uppercase text-xs tracking-wider text-neutral-700">MINISTÉRIO DA JUSTIÇA</h5>
+                <h5 className="font-sans font-bold uppercase text-xs tracking-wider text-neutral-700">{dl.transcription.ministry}</h5>
                 <p className="font-sans text-xs text-neutral-600 font-semibold mt-1">
-                  DIRECÇÃO GERAL DE IDENTIFICAÇÃO CIVIL, DOS REGISTOS E DO NOTARIADO
+                  {dl.transcription.directorate}
                 </p>
                 <p className="font-sans text-xs text-neutral-500 font-medium italic">
-                  Conservatória dos Registos Centrais de Bissau
+                  {dl.transcription.registry}
                 </p>
               </div>
 
@@ -479,32 +480,25 @@ __________________________________________________`
               <div className="mb-10 font-sans">
                 <div className="flex flex-wrap items-center justify-between gap-2 border-b-2 border-primary-900 pb-2 mb-4">
                   <h4 className="text-base sm:text-lg font-black text-primary-950 uppercase tracking-tight">
-                    AQUISIÇÃO DE NACIONALIDADE POR NATURALIZAÇÃO
+                    {dl.transcription.naturalization}
                   </h4>
                   <span className="bg-accent-100 text-accent-950 px-3 py-1 rounded-md font-mono font-extrabold text-sm border border-accent-300">
                     770.482 FCFA
                   </span>
                 </div>
 
-                <h5 className="text-xs font-black uppercase tracking-wider text-primary-800 mb-2">DOCUMENTOS NECESSÁRIOS:</h5>
+                <h5 className="text-xs font-black uppercase tracking-wider text-primary-800 mb-2">{dl.transcription.requiredDocuments}</h5>
                 <ul className="list-disc pl-5 space-y-1.5 text-xs sm:text-sm text-neutral-800 mb-4">
-                  <li>Certidão de Nascimento do país de origem</li>
-                  <li>Certificado do Registo Criminal do país de origem</li>
+                  {dl.transcription.naturalizationOrigin.map((document: string) => <li key={document}>{document}</li>)}
                 </ul>
 
                 <div className="bg-neutral-50 p-3.5 rounded-lg border-l-4 border-accent-500 text-xs sm:text-sm text-neutral-700 italic mb-4">
-                  # Se o requerente for casado, deve juntar ainda, a certidão de casamento ou certidão de nascimento com averbamento de facto modificativo do estado civil.
+                  {dl.transcription.naturalizationMarriageNote}
                 </div>
 
-                <h6 className="text-xs font-black uppercase tracking-wider text-neutral-700 mb-2">País de Fixação de Residência (Guiné-Bissau):</h6>
+                <h6 className="text-xs font-black uppercase tracking-wider text-neutral-700 mb-2">{dl.transcription.residenceCountry}</h6>
                 <ul className="list-disc pl-5 space-y-1.5 text-xs sm:text-sm text-neutral-800">
-                  <li>Certificado do Registo Criminal</li>
-                  <li>Declaração de Conformidade – Migração e Fronteiras</li>
-                  <li>Atestado de Fixação de Residência – C. M. Bissau</li>
-                  <li>Atestado de Comportamento Moral e Civil – C. M. Bissau</li>
-                  <li>Declaração de Conhecimento da Cultura Guineense – Min. da Cultura</li>
-                  <li>Fotocópia do Passaporte</li>
-                  <li>Fotocópia do Cartão de Residência</li>
+                  {dl.transcription.naturalizationResidence.map((document: string) => <li key={document}>{document}</li>)}
                 </ul>
               </div>
 
@@ -512,40 +506,33 @@ __________________________________________________`
               <div className="font-sans pt-6 border-t border-neutral-200">
                 <div className="flex flex-wrap items-center justify-between gap-2 border-b-2 border-success-800 pb-2 mb-4">
                   <h4 className="text-base sm:text-lg font-black text-primary-950 uppercase tracking-tight">
-                    AQUISIÇÃO DE NACIONALIDADE POR CASAMENTO
+                    {dl.transcription.marriage}
                   </h4>
                   <span className="bg-success-100 text-success-950 px-3 py-1 rounded-md font-mono font-extrabold text-sm border border-success-300">
                     155.097 FCFA
                   </span>
                 </div>
 
-                <h5 className="text-xs font-black uppercase tracking-wider text-success-900 mb-2">DOCUMENTOS NECESSÁRIOS:</h5>
+                <h5 className="text-xs font-black uppercase tracking-wider text-success-900 mb-2">{dl.transcription.requiredDocuments}</h5>
 
-                <h6 className="text-xs font-black uppercase tracking-wider text-neutral-700 mb-1">País de Origem:</h6>
+                <h6 className="text-xs font-black uppercase tracking-wider text-neutral-700 mb-1">{dl.transcription.originCountry}</h6>
                 <ul className="list-disc pl-5 space-y-1.5 text-xs sm:text-sm text-neutral-800 mb-4">
-                  <li>Certidão de Nascimento com averbamento do casamento</li>
-                  <li>Certificado do Registo Criminal</li>
+                  {dl.transcription.marriageOrigin.map((document: string) => <li key={document}>{document}</li>)}
                 </ul>
 
-                <h6 className="text-xs font-black uppercase tracking-wider text-neutral-700 mb-1">País de Fixação de Residência (Guiné-Bissau):</h6>
+                <h6 className="text-xs font-black uppercase tracking-wider text-neutral-700 mb-1">{dl.transcription.residenceCountry}</h6>
                 <ul className="list-disc pl-5 space-y-1.5 text-xs sm:text-sm text-neutral-800 mb-4">
-                  <li>Certificado do Registo Criminal</li>
-                  <li>Atestado de Fixação de Residência – Migração e Fronteiras</li>
-                  <li>Atestado de Fixação de Residência – C. M. Bissau</li>
-                  <li>Atestado de Comportamento Moral – C. M. Bissau</li>
-                  <li>Certidão de Casamento Transcrito</li>
-                  <li>Fotocópia do Cartão de Residência</li>
-                  <li>Certidão de Nascimento de quem dá</li>
+                  {dl.transcription.marriageResidence.map((document: string) => <li key={document}>{document}</li>)}
                 </ul>
 
                 <div className="bg-neutral-50 p-3.5 rounded-lg border-l-4 border-success-600 text-xs sm:text-sm text-neutral-700 italic">
-                  # Se for de uma pessoa que obteve a Nacionalidade Guineense e o quiser conceder ao seu cônjuge, deve apresentar uma cópia do B.O. que anunciou a sua e também juntar a cópia do seu B.I.
+                  {dl.transcription.marriageNote}
                 </div>
               </div>
 
               <div className="mt-8 pt-6 border-t border-neutral-200 text-center font-sans">
                 <Link to="/agendamento" className="btn btn-primary px-8 py-3.5 text-sm">
-                  <CalendarCheck size={18} /> Agendar Entrega Deste Dossiê no Escritório
+                  <CalendarCheck size={18} /> {dl.transcription.scheduleDelivery}
                 </Link>
               </div>
             </div>
@@ -574,7 +561,7 @@ __________________________________________________`
               <div className="rounded-xl overflow-hidden border border-neutral-200 bg-neutral-900 flex items-center justify-center">
                 <img 
                   src="/assets/aistudio/WhatsApp_Image_2026-10-21_at_09.03.22_4befee8f.jpeg" 
-                  alt="Documento Oficial de Requisitos de Naturalização e Casamento" 
+                  alt={dl.transcription.originalDocumentAlt}
                   className="w-full max-h-[750px] object-contain hover:scale-105 transition-transform duration-500"
                 />
               </div>
@@ -701,6 +688,9 @@ __________________________________________________`
             </div>
 
             {/* Modal Body - Document Text Preview */}
+            <p className="px-6 sm:px-8 pt-4 bg-neutral-50/70 text-xs text-neutral-600">
+              {dl.transcription.templatePreviewDisclaimer}
+            </p>
             <div className="p-6 sm:p-8 overflow-y-auto bg-neutral-50/70 flex-1 font-mono text-xs sm:text-sm text-neutral-900 leading-relaxed whitespace-pre-wrap select-text border-y border-neutral-200">
               {previewTemplate.previewContent}
             </div>

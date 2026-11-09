@@ -14,10 +14,21 @@ export function Contact() {
     nome: '',
     email: '',
     telefone: '',
-    assunto: 'Processo de Naturalização e Agendamento',
+    assunto: 'naturalization',
     msg: ''
   });
   const [status, setStatus] = useState<null | 'success' | 'error'>(null);
+
+  const getTopicLabel = (topic: string) => {
+    switch (topic) {
+      case 'naturalization': return t.contact.topics.naturalization;
+      case 'marriage': return t.contact.topics.marriage;
+      case 'diaspora': return t.contact.topics.diaspora;
+      case 'passport': return t.contact.topics.passport;
+      case 'records': return t.contact.topics.records;
+      default: return t.contact.topics.other;
+    }
+  };
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -25,13 +36,15 @@ export function Contact() {
       error(language === 'fr' ? 'Veuillez saisir votre nom et prénom.' : language === 'en' ? 'Please fill in your full name.' : language === 'es' ? 'Por favor ingrese su nombre y apellido completo.' : 'Por favor preencha o seu Nome e Apelido completo.');
       return;
     }
-    const txt = `*NOVA MENSAGEM VIA SITE EMDPN-GB*\n\n` +
-      `*Nome:* ${formData.nome}\n` +
-      `*Telefone:* ${formData.telefone || 'Não indicado'}\n` +
-      `*E-mail:* ${formData.email}\n` +
-      `*Assunto:* ${formData.assunto}\n` +
-      `*Mensagem:* ${formData.msg}\n\n` +
-      `_Encaminhado para o e-mail oficial: infor.ciesemdpngb@gmail.com_`;
+    const copy = t.contact.outbound;
+    const subject = getTopicLabel(formData.assunto);
+    const txt = `*${copy.title}*\n\n` +
+      `*${copy.name}:* ${formData.nome}\n` +
+      `*${copy.phone}:* ${formData.telefone || copy.notProvided}\n` +
+      `*${copy.email}:* ${formData.email}\n` +
+      `*${copy.subject}:* ${subject}\n` +
+      `*${copy.message}:* ${formData.msg}\n\n` +
+      `_${copy.officialRecipient}: ${OFFICIAL_EMAILS_MAILTO}_`;
     
     window.open(`https://wa.me/245957000555?text=${encodeURIComponent(txt)}`, '_blank');
     setStatus('success');
@@ -43,20 +56,22 @@ export function Contact() {
       error(language === 'fr' ? 'Veuillez remplir au moins votre nom et votre adresse e-mail.' : language === 'en' ? 'Please fill in at least your name and email.' : language === 'es' ? 'Por favor complete al menos su nombre y correo.' : 'Por favor preencha pelo menos o seu Nome e E-mail.');
       return;
     }
-    const subject = encodeURIComponent(`Contacto via site EMDPN-GB: ${formData.assunto} - ${formData.nome}`);
+    const copy = t.contact.outbound;
+    const topic = getTopicLabel(formData.assunto);
+    const subject = encodeURIComponent(`${copy.emailSubjectPrefix}: ${topic} - ${formData.nome}`);
     const body = encodeURIComponent(
-      `Mensagem enviada através do portal oficial EMDPN-GB:\n\n` +
-      `Nome Completo: ${formData.nome}\n` +
-      `Telefone/WhatsApp: ${formData.telefone || 'Não indicado'}\n` +
-      `E-mail do Requerente: ${formData.email}\n` +
-      `Assunto: ${formData.assunto}\n\n` +
-      `Mensagem:\n${formData.msg || 'Sem mensagem adicional'}\n\n` +
+      `${copy.emailIntro}\n\n` +
+      `${copy.name}: ${formData.nome}\n` +
+      `${copy.phone}/WhatsApp: ${formData.telefone || copy.notProvided}\n` +
+      `${copy.applicantEmail}: ${formData.email}\n` +
+      `${copy.subject}: ${topic}\n\n` +
+      `${copy.message}:\n${formData.msg || copy.noAdditionalMessage}\n\n` +
       `-------------------------------------------------------------\n` +
-      `Enviado para o e-mail oficial do EMDPN-GB:\n` +
+      `${copy.officialRecipient} EMDPN-GB:\n` +
       `infor.ciesemdpngb@gmail.com`
     );
     window.location.href = `mailto:${OFFICIAL_EMAILS_MAILTO}?subject=${subject}&body=${body}`;
-    success('A preparar e-mail para infor.ciesemdpngb@gmail.com...');
+    success(`${copy.emailPrepared} infor.ciesemdpngb@gmail.com...`);
   };
 
   return (
@@ -104,7 +119,7 @@ export function Contact() {
                         type="email" 
                         value={formData.email}
                         onChange={e => setFormData({...formData, email: e.target.value})}
-                        placeholder="nome@exemplo.com"
+                        placeholder={t.contact.placeholderEmail}
                         className="w-full px-4 py-3 border border-neutral-300 rounded-lg focus:border-primary-600 focus:ring-2 focus:ring-primary-100 outline-none transition-all text-sm"
                         required 
                       />
@@ -132,12 +147,12 @@ export function Contact() {
                       onChange={e => setFormData({...formData, assunto: e.target.value})}
                       className="w-full px-4 py-3 border border-neutral-300 rounded-lg focus:border-primary-600 focus:ring-2 focus:ring-primary-100 outline-none transition-all text-sm bg-white"
                     >
-                      <option value="Processo de Naturalização">{language === 'fr' ? 'Naturalisation & Citoyenneté' : language === 'en' ? 'Naturalization & Citizenship' : language === 'es' ? 'Naturalización y Ciudadanía' : 'Processo de Naturalização (Nacionalidade)'}</option>
-                      <option value="Aquisição por Casamento">{language === 'fr' ? 'Nationalité par Mariage' : language === 'en' ? 'Nationality by Marriage' : language === 'es' ? 'Nacionalidad por Matrimonio' : 'Aquisição de Nacionalidade por Casamento'}</option>
-                      <option value="Diáspora e Década do Retorno">{language === 'fr' ? 'Diaspora & Retour aux Origines' : language === 'en' ? 'Diaspora & Return Movement' : language === 'es' ? 'Diáspora y Retorno Ancestral' : 'Diáspora Guineense e Década do Retorno'}</option>
-                      <option value="Emissão de Passaporte e BI">{language === 'fr' ? 'Passeport Biométrique & Carte d’Identité' : language === 'en' ? 'Biometric Passport & ID Card' : language === 'es' ? 'Pasaporte Biométrico y Carnet' : 'Emissão de Passaporte Biométrico e BI'}</option>
-                      <option value="Cédulas e Registo Criminal">{language === 'fr' ? 'Extrait d’Acte & Casier Judiciaire' : language === 'en' ? 'Birth Record & Criminal Record' : language === 'es' ? 'Cédula y Antecedentes Penales' : 'Cédula Pessoal e Registo Criminal'}</option>
-                      <option value="Outro Assunto">{language === 'fr' ? 'Autre Demande' : language === 'en' ? 'Other Matter' : language === 'es' ? 'Otro Asunto' : 'Outro Assunto'}</option>
+                      <option value="naturalization">{t.contact.topics.naturalization}</option>
+                      <option value="marriage">{t.contact.topics.marriage}</option>
+                      <option value="diaspora">{t.contact.topics.diaspora}</option>
+                      <option value="passport">{t.contact.topics.passport}</option>
+                      <option value="records">{t.contact.topics.records}</option>
+                      <option value="other">{t.contact.topics.other}</option>
                     </select>
                   </div>
 

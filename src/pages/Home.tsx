@@ -120,7 +120,7 @@ export function Home() {
                   <div className="w-14 h-14 sm:w-20 sm:h-20 md:w-24 md:h-24 flex items-center justify-center bg-transparent shrink-0 drop-shadow-2xl">
                     <img 
                       src={DEFAULT_IMAGES.logo} 
-                      alt="Emblema Nacional da República da Guiné-Bissau" 
+                      alt={t.nav.emblemAlt}
                       className="w-full h-full object-contain filter drop-shadow-[0_4px_12px_rgba(0,0,0,0.6)]"
                     />
                   </div>
@@ -282,7 +282,7 @@ export function Home() {
             <div className="relative w-full rounded-2xl sm:rounded-3xl overflow-hidden shadow-2xl border-2 border-white/20 bg-neutral-950 group">
               <img 
                 src={customImages.heroBanner || DEFAULT_IMAGES.heroBanner} 
-                alt="Gabinete Jurídico de Apoio Documental e Cidadania em Bissau, Guiné-Bissau" 
+                alt={t.homeContent.heroAlt}
                 referrerPolicy="no-referrer"
                 className="w-full h-[280px] sm:h-[380px] md:h-[460px] lg:h-[500px] object-cover object-center group-hover:scale-101 transition-transform duration-700" 
               />
@@ -293,10 +293,10 @@ export function Home() {
                   <div>
                     <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-accent-500/20 border border-accent-400/40 text-accent-300 text-[11px] font-bold uppercase tracking-wider mb-2">
                       <span className="w-2 h-2 rounded-full bg-accent-400"></span>
-                      <span>Gabinete Jurídico Oficial · Bissau / Safim</span>
+                      <span>{t.homeContent.bannerLabel}</span>
                     </div>
                     <h3 className="text-white text-lg sm:text-2xl font-serif font-bold leading-tight max-w-xl">
-                      Consultoria e Tramitação Notarial para Cidadania & Documentos Guineenses
+                      {t.homeContent.bannerTitle}
                     </h3>
                     <p className="text-neutral-300 text-xs sm:text-sm mt-1 max-w-lg font-light">
                       {t.hero.photoCaption}
@@ -307,9 +307,9 @@ export function Home() {
                     <Link
                       to="/admin?tab=dev"
                       className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-white/20 hover:bg-white/30 text-white backdrop-blur-md text-xs font-bold border border-white/30 transition-all self-start sm:self-auto"
-                      title="Mudar imagens no Gestor do Desenvolvedor"
+                      title={t.homeContent.editBannerTitle}
                     >
-                      <span>⚙️ Mudar Imagem / Área Desenvolvedor</span>
+                      <span>⚙️ {t.homeContent.editBanner}</span>
                     </Link>
                   )}
                 </div>
@@ -562,29 +562,29 @@ export function Home() {
               <div className="relative rounded-2xl overflow-hidden border border-neutral-200 shadow-lg h-full flex flex-col justify-between bg-neutral-900 group">
                 <img 
                   src={customImages.audienceShowcase || DEFAULT_IMAGES.audienceShowcase} 
-                  alt="Atendimento consular e identificação civil em Bissau" 
+                  alt={t.homeContent.secondaryAlt}
                   referrerPolicy="no-referrer"
                   className="w-full h-[260px] sm:h-[300px] lg:h-full object-cover group-hover:scale-102 transition-transform duration-500" 
                 />
                 <div className="absolute inset-0 bg-gradient-to-t from-neutral-950/90 via-neutral-950/40 to-transparent flex flex-col justify-end p-6">
                   <div className="flex items-center justify-between mb-1">
                     <span className="text-accent-400 text-xs font-bold uppercase tracking-wider">
-                      Gabinete Notarial & Consular
+                      {t.homeContent.secondaryCategory}
                     </span>
                     {isAuthenticated && (
                       <Link 
                         to="/admin?tab=dev" 
                         className="text-[10px] bg-white/20 hover:bg-white/30 text-white px-2 py-0.5 rounded font-bold backdrop-blur-xs"
                       >
-                        ⚙️ Alterar Imagem
+                        ⚙️ {t.homeContent.editSecondaryImage}
                       </Link>
                     )}
                   </div>
                   <h4 className="text-white text-base font-bold font-serif leading-snug">
-                    Atendimento humanizado para cidadãos residentes, diáspora e retornados
+                    {t.homeContent.secondaryTitle}
                   </h4>
                   <p className="text-neutral-300 text-xs mt-1.5 font-light">
-                    Tramitação transparente e direta com a Direção de Identificação Civil e Registos da Guiné-Bissau.
+                    {t.homeContent.secondaryDescription}
                   </p>
                 </div>
               </div>
@@ -611,18 +611,18 @@ export function Home() {
           <div className="mt-12 bg-primary-950 text-white p-8 sm:p-10 rounded-2xl shadow-xl relative overflow-hidden">
             <div className="relative z-10 max-w-3xl">
               <span className="text-accent-400 text-xs font-bold uppercase tracking-wider block mb-2">
-                Compromisso Ético & Jurídico
+                {t.homeContent.ethicalTitle}
               </span>
               <h3 className="text-xl sm:text-2xl font-serif font-bold text-white mb-4">
-                "O nosso compromisso é não burlar o Estado Guineense nem o nosso cliente."
+                “{t.homeContent.ethicalQuote}”
               </h3>
               <p className="text-neutral-300 text-sm leading-relaxed mb-6 font-light">
-                Todos os processos são tratados com estrita legalidade, cobrando apenas as taxas oficiais do Estado e os nossos honorários de serviço, com um atendimento especial, digno e humanizado.
+                {t.homeContent.ethicalDescription}
               </p>
               <div className="flex flex-wrap gap-4 text-xs font-bold text-accent-300">
-                <span className="flex items-center gap-1.5"><CheckCircle2 size={16} /> Parceria com Ministérios Oficiais</span>
-                <span className="flex items-center gap-1.5"><CheckCircle2 size={16} /> Taxas Transparentes do Cofre da Justiça</span>
-                <span className="flex items-center gap-1.5"><CheckCircle2 size={16} /> Sem Intermediários Ilegais</span>
+                {t.homeContent.partnershipPoints.map((point: string) => (
+                  <span key={point} className="flex items-center gap-1.5"><CheckCircle2 size={16} /> {point}</span>
+                ))}
               </div>
             </div>
           </div>
@@ -662,23 +662,18 @@ export function Home() {
       <section className="py-20 bg-white">
         <div className="max-w-[1160px] mx-auto px-6">
           <div className="text-center mb-12">
-            <h2 className="text-3xl sm:text-4xl text-primary-950 font-serif font-bold mb-2">Como Funciona o Agendamento</h2>
-            <p className="text-neutral-500 text-sm">Quatro passos simples até à conclusão do seu dossiê</p>
+            <h2 className="text-3xl sm:text-4xl text-primary-950 font-serif font-bold mb-2">{t.homeContent.stepsTitle}</h2>
+            <p className="text-neutral-500 text-sm">{t.homeContent.stepsDescription}</p>
           </div>
 
           <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-6">
-            {[
-              { n: '1', title: 'Agendamento Online', desc: 'Escolhe o serviço, modalidade presencial ou remota, data e hora conveniente.' },
-              { n: '2', title: 'Triagem e Tradução', desc: 'Verificamos certidões, antecedentes e traduzimos oficialmente para Português.' },
-              { n: '3', title: 'Submissão Oficial', desc: 'Entregamos o dossiê formal junto do Ministério da Justiça e Interior.' },
-              { n: '4', title: 'Emissão e Entrega', desc: 'Acompanhamos o despacho, registo civil, BI e Passaporte concedidos.' },
-            ].map((step, idx) => (
+            {t.homeContent.steps.map((step: { title: string; description: string }, idx: number) => (
               <div key={idx} className="bg-neutral-50 p-6 rounded-2xl border border-neutral-200 relative group hover:border-primary-400 transition-all">
                 <div className="w-10 h-10 rounded-xl bg-primary-900 text-white font-bold flex items-center justify-center mb-4 text-sm font-mono">
-                  {step.n}
+                  {idx + 1}
                 </div>
                 <h3 className="font-bold text-primary-950 text-base mb-2">{step.title}</h3>
-                <p className="text-neutral-600 text-xs leading-relaxed">{step.desc}</p>
+                <p className="text-neutral-600 text-xs leading-relaxed">{step.description}</p>
               </div>
             ))}
           </div>
@@ -692,14 +687,14 @@ export function Home() {
       <section className="bg-neutral-100 text-neutral-950 py-16 text-center px-6">
         <div className="max-w-2xl mx-auto">
           <h2 className="text-2xl sm:text-4xl font-serif font-extrabold text-black mb-4">
-            Pronto para Dar Início ao Seu Processo?
+            {t.homeContent.finalTitle}
           </h2>
           <p className="text-neutral-800 text-sm sm:text-base mb-8 font-semibold">
-            Faça hoje o seu agendamento ou entre em contacto direto com a nossa equipa em Bissau.
+            {t.homeContent.finalDescription}
           </p>
           <div className="flex flex-wrap gap-4 justify-center">
             <Link to="/agendamento" className="btn btn-primary px-8 py-3.5 text-sm uppercase tracking-wide">
-              Fazer Agendamento Online
+              {t.homeContent.finalAppointment}
             </Link>
             <a 
               href="https://wa.me/245957000555" 
@@ -707,7 +702,7 @@ export function Home() {
               rel="noopener noreferrer" 
               className="btn btn-whatsapp px-8 py-3.5 text-sm uppercase tracking-wide"
             >
-              Falar no WhatsApp
+              {t.homeContent.finalWhatsApp}
             </a>
           </div>
         </div>

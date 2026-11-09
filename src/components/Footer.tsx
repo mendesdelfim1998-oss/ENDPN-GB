@@ -25,7 +25,7 @@ export function Footer() {
             <div className="w-10 h-10 flex items-center justify-center bg-transparent drop-shadow-sm">
               <img 
                 src={DEFAULT_IMAGES.logo} 
-                alt="Emblema Nacional da República da Guiné-Bissau" 
+                alt={t.nav.emblemAlt}
                 className="w-full h-full object-contain filter drop-shadow" 
               />
             </div>
@@ -56,7 +56,7 @@ export function Footer() {
           <ul className="space-y-3 text-xs">
             <li className="flex gap-2.5 items-start">
               <MapPin size={16} className="text-accent-500 mt-0.5 shrink-0" />
-              <span>Safim Centro / Reino, Setor de Safim, Guiné-Bissau</span>
+              <span>{t.footer.locationValue}</span>
             </li>
             <li className="flex gap-2.5 items-start">
               <Phone size={16} className="text-accent-500 mt-0.5 shrink-0" />

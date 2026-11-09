@@ -31,7 +31,7 @@ export function News() {
   useEffect(() => {
     syncArticlesFromSupabase().catch(err => {
       console.error('Could not sync news from Supabase:', err);
-      error(err.message || 'Não foi possível carregar as publicações.');
+      error(err.message || t.news.syncError);
     });
     const handleUpdate = () => {
       setCustomArticles(getCustomArticles());
@@ -47,13 +47,16 @@ export function News() {
   const handlePublish = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!newTitle.trim() || !newExcerpt.trim()) {
-      error('Preencha o Título e o Conteúdo do Evento/Publicação.');
+      error(t.news.missingFields);
       return;
     }
     setIsPublishing(true);
     const article: ArticleItem = {
       title: newTitle.trim(),
-      date: new Date().toLocaleDateString('pt-PT', { day: '2-digit', month: 'short', year: 'numeric' }),
+      date: new Date().toLocaleDateString(
+        language === 'fr' ? 'fr-FR' : language === 'en' ? 'en-US' : language === 'es' ? 'es-ES' : 'pt-PT',
+        { day: '2-digit', month: 'short', year: 'numeric' }
+      ),
       author: 'Direção EMDPN-GB',
       excerpt: newExcerpt.trim(),
       category: newCategory.trim(),
@@ -62,14 +65,14 @@ export function News() {
     try {
       await saveArticle(article);
       setCustomArticles(getCustomArticles());
-      success('Publicação guardada no portal e disponível para todos.');
+      success(t.news.saved);
       setNewTitle('');
       setNewExcerpt('');
       setNewImageUrl('');
       setShowPublishModal(false);
     } catch (err) {
       console.error('Could not publish news:', err);
-      error(err instanceof Error ? err.message : 'Não foi possível publicar.');
+      error(err instanceof Error ? err.message : t.news.publishError);
     } finally {
       setIsPublishing(false);
     }
@@ -77,16 +80,16 @@ export function News() {
 
   const handleDelete = async (id: string) => {
     if (!isAuthenticated) {
-      error('Acesso negado: Somente o administrador autenticado pode apagar publicações.');
+      error(t.news.accessDenied);
       return;
     }
-    if (window.confirm('Tem certeza que pretende remover esta publicação?')) {
+    if (window.confirm(t.news.confirmDelete)) {
       try {
         await deleteArticle(id);
         setCustomArticles(getCustomArticles());
-        success('Publicação removida com sucesso.');
+        success(t.news.deleted);
       } catch (err: any) {
-        error(err.message || 'Erro ao remover publicação.');
+        error(err.message || t.news.deleteError);
       }
     }
   };
@@ -182,6 +185,26 @@ export function News() {
   ];
 
   const allArticles: ArticleItem[] = [...customArticles, ...baseArticles];
+  const categoryAliases: Record<string, number> = {
+    institucional: 0,
+    institutional: 0,
+    institutionnel: 0,
+    evento: 1,
+    event: 1,
+    événement: 1,
+    milestone: 1,
+    comunicado: 2,
+    announcement: 2,
+    conseil: 3,
+    conseils: 3,
+    tips: 3,
+    'legal advice': 3,
+    'dicas': 3
+  };
+  const getCategoryLabel = (category: string) => {
+    const categoryIndex = categoryAliases[category.toLocaleLowerCase()];
+    return categoryIndex === undefined ? category : t.news.categories[categoryIndex];
+  };
 
   return (
     <div>
@@ -200,15 +223,15 @@ export function News() {
                   <Shield size={20} />
                 </div>
                 <div>
-                  <h4 className="font-bold text-primary-950 text-base">Dashboard de Administração e Eventos</h4>
-                  <p className="text-neutral-600 text-xs">Painel restrito para publicação de comunicados, eventos e fotografias oficiais.</p>
+                  <h4 className="font-bold text-primary-950 text-base">{t.news.adminTitle}</h4>
+                  <p className="text-neutral-600 text-xs">{t.news.adminDescription}</p>
                 </div>
               </div>
               <button 
                 onClick={() => setShowPublishModal(true)}
                 className="btn btn-primary text-xs uppercase tracking-wider py-3 px-6 shrink-0 flex items-center gap-2"
               >
-                <PlusCircle size={16} /> Publicar Novo Evento / Artigo
+                <PlusCircle size={16} /> {t.news.publishNew}
               </button>
             </div>
           )}
@@ -229,13 +252,13 @@ export function News() {
                   )}
                   <div className="flex items-center justify-between mb-2">
                     <span className="inline-block text-[#16845B] font-bold text-[0.76rem] tracking-widest uppercase">
-                      {article.category}
+                      {getCategoryLabel(article.category)}
                     </span>
                     {isAuthenticated && article.id && (
                       <button 
                         onClick={() => handleDelete(article.id!)}
                         className="text-red-500 hover:text-red-700 p-1 rounded transition-colors"
-                        title="Eliminar Publicação"
+                        title={t.news.deletePublication}
                       >
                         <Trash2 size={16} />
                       </button>
@@ -262,7 +285,7 @@ export function News() {
               <div className="bg-white rounded-2xl max-w-lg w-full p-7 sm:p-8 shadow-2xl border border-neutral-200 animate-fade-in">
                 <div className="flex items-center justify-between mb-5 pb-3 border-b border-neutral-100">
                   <h3 className="text-xl font-serif font-bold text-primary-950 flex items-center gap-2">
-                    <PlusCircle className="text-[#16845B]" size={22} /> Publicar Evento / Notícia
+                    <PlusCircle className="text-[#16845B]" size={22} /> {t.news.publishTitle}
                   </h3>
                   <button 
                     onClick={() => setShowPublishModal(false)}
@@ -275,14 +298,14 @@ export function News() {
                 <form onSubmit={handlePublish} className="space-y-4 text-left">
                   <div>
                     <label className="block text-xs font-bold text-neutral-700 uppercase tracking-wider mb-1">
-                      Título do Evento / Publicação *
+                      {t.news.titleLabel}
                     </label>
                     <input 
                       type="text"
                       required
                       value={newTitle}
                       onChange={e => setNewTitle(e.target.value)}
-                      placeholder="Ex: Cerimónia de Entrega de Passaportes em Bissau"
+                      placeholder={t.news.titlePlaceholder}
                       className="w-full px-4 py-3 bg-neutral-50 border border-neutral-200 rounded-xl text-neutral-900 text-sm focus:outline-none focus:border-primary-600"
                     />
                   </div>
@@ -290,23 +313,23 @@ export function News() {
                   <div className="grid grid-cols-2 gap-4">
                     <div>
                       <label className="block text-xs font-bold text-neutral-700 uppercase tracking-wider mb-1">
-                        Categoria
+                        {t.news.category}
                       </label>
                       <select
                         value={newCategory}
                         onChange={e => setNewCategory(e.target.value)}
                         className="w-full px-4 py-3 bg-neutral-50 border border-neutral-200 rounded-xl text-neutral-900 text-sm focus:outline-none focus:border-primary-600"
                       >
-                        <option value="Institucional">Institucional</option>
-                        <option value="Evento">Evento</option>
-                        <option value="Comunicado">Comunicado Oficial</option>
-                        <option value="Dicas">Dicas & Requisitos</option>
+                        <option value="Institucional">{t.news.categories[0]}</option>
+                        <option value="Evento">{t.news.categories[1]}</option>
+                        <option value="Comunicado">{t.news.categories[2]}</option>
+                        <option value="Dicas">{t.news.categories[3]}</option>
                       </select>
                     </div>
 
                     <div>
                       <label className="block text-xs font-bold text-neutral-700 uppercase tracking-wider mb-1">
-                        Foto do Computador
+                        {t.news.imageLabel}
                       </label>
                       <input 
                         type="file"
@@ -317,9 +340,9 @@ export function News() {
                             try {
                               const dataUrl = await processImageFile(file, 800, 600, 0.85);
                               setNewImageUrl(dataUrl);
-                              success('Imagem carregada do computador com sucesso!');
+                              success(t.news.imageSuccess);
                             } catch {
-                              error('Erro ao processar imagem.');
+                              error(t.news.imageError);
                             }
                           }
                         }}
@@ -330,12 +353,12 @@ export function News() {
 
                   {newImageUrl && (
                     <div className="relative w-full h-28 rounded-xl overflow-hidden bg-neutral-900 border border-neutral-200">
-                      <img src={newImageUrl} alt="Pré-visualização" className="w-full h-full object-cover" />
+                      <img src={newImageUrl} alt={t.news.imageLabel} className="w-full h-full object-cover" />
                       <button
                         type="button"
                         onClick={() => setNewImageUrl('')}
                         className="absolute top-1.5 right-1.5 p-1 rounded-full bg-black/60 text-white hover:bg-black/80"
-                        title="Remover imagem"
+                        title={t.news.removeImage}
                       >
                         ✕
                       </button>
@@ -344,14 +367,14 @@ export function News() {
 
                   <div>
                     <label className="block text-xs font-bold text-neutral-700 uppercase tracking-wider mb-1">
-                      Conteúdo / Resumo da Publicação *
+                      {t.news.contentLabel}
                     </label>
                     <textarea 
                       rows={4}
                       required
                       value={newExcerpt}
                       onChange={e => setNewExcerpt(e.target.value)}
-                      placeholder="Descreva os detalhes da publicação ou evento oficial..."
+                      placeholder={t.news.contentPlaceholder}
                       className="w-full px-4 py-3 bg-neutral-50 border border-neutral-200 rounded-xl text-neutral-900 text-sm focus:outline-none focus:border-primary-600 resize-none"
                     />
                   </div>
@@ -362,14 +385,14 @@ export function News() {
                       onClick={() => setShowPublishModal(false)}
                       className="px-5 py-2.5 bg-neutral-100 hover:bg-neutral-200 text-neutral-700 rounded-xl font-bold text-xs uppercase"
                     >
-                      Cancelar
+                      {t.news.cancel}
                     </button>
                     <button 
                       type="submit"
                       disabled={isPublishing}
                       className="btn btn-primary text-xs uppercase py-2.5 px-6 disabled:opacity-50"
                     >
-                      {isPublishing ? 'A guardar...' : 'Publicar no Portal'}
+                      {isPublishing ? t.news.saving : t.news.publish}
                     </button>
                   </div>
                 </form>

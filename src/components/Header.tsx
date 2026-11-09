@@ -81,7 +81,7 @@ export function Header() {
             <div className="w-8 h-8 sm:w-10 sm:h-10 flex items-center justify-center bg-transparent group-hover:scale-105 transition-transform duration-300 drop-shadow-sm shrink-0">
               <img 
                 src={DEFAULT_IMAGES.logo} 
-                alt="Emblema Nacional da República da Guiné-Bissau" 
+                alt={t.nav.emblemAlt}
                 className="w-full h-full object-contain filter drop-shadow" 
               />
             </div>
@@ -114,8 +114,8 @@ export function Header() {
             <button 
               onClick={() => setIsSearchModalOpen(true)}
               className="p-2 ml-2 text-neutral-600 hover:text-primary-800 hover:bg-neutral-100/80 rounded-lg transition-all"
-              aria-label="Procurar Agendamento"
-              title="Pesquisar Agendamento"
+              aria-label={t.nav.searchAppointments}
+              title={t.nav.searchAppointments}
             >
               <Search size={18} />
             </button>
@@ -148,8 +148,8 @@ export function Header() {
             <button 
               onClick={() => setIsSearchModalOpen(true)}
               className="p-2 text-primary-900 border border-neutral-300 rounded-lg hover:bg-neutral-100 transition-colors max-[380px]:hidden"
-              aria-label="Pesquisar Agendamento"
-              title="Pesquisar Agendamento"
+              aria-label={t.nav.searchAppointments}
+              title={t.nav.searchAppointments}
             >
               <Search size={17} />
             </button>
@@ -162,7 +162,7 @@ export function Header() {
             <button 
               className="p-2 text-primary-900 border border-neutral-300 rounded-lg hover:bg-neutral-100 transition-colors focus:outline-none focus:ring-2 focus:ring-primary-500"
               onClick={() => setIsOpen(true)}
-              aria-label="Abrir Menu de Navegação"
+              aria-label={t.nav.openMenu}
             >
               <Menu size={22} />
             </button>
@@ -178,7 +178,7 @@ export function Header() {
           className="fixed inset-0 z-[200] bg-neutral-950/90 backdrop-blur-2xl text-white flex flex-col justify-between p-5 sm:p-7 overflow-y-auto overscroll-contain animate-in fade-in duration-200"
           role="dialog"
           aria-modal="true"
-          aria-label="Menu principal de navegação"
+          aria-label={t.nav.mainNavigation}
         >
           {/* Top Row: Brand & Close Button */}
           <div className="flex items-center justify-between pb-4 border-b border-white/10 shrink-0">
@@ -193,7 +193,7 @@ export function Header() {
               <div className="w-8 h-8 flex items-center justify-center bg-transparent drop-shadow shrink-0">
                 <img 
                   src={DEFAULT_IMAGES.logo} 
-                  alt="Emblema da República da Guiné-Bissau" 
+                  alt={t.nav.emblemAlt}
                   className="w-full h-full object-contain" 
                 />
               </div>
@@ -205,7 +205,7 @@ export function Header() {
             <button
               onClick={() => setIsOpen(false)}
               className="p-2.5 rounded-full bg-white/10 border border-white/20 text-white hover:bg-white/20 active:scale-95 transition-all shadow-md focus:outline-none focus:ring-2 focus:ring-accent-400"
-              aria-label="Fechar menu"
+              aria-label={t.nav.closeMenu}
             >
               <X size={24} />
             </button>
@@ -216,13 +216,13 @@ export function Header() {
             {/* Multilingual Selector inside Fullscreen Menu */}
             <div className="p-3.5 rounded-2xl bg-white/5 border border-white/10 backdrop-blur-md">
               <span className="block text-[11px] font-bold uppercase tracking-wider text-neutral-400 mb-2.5">
-                Escolha o Seu Idioma / Choose Language
+                {t.nav.language}
               </span>
               <LanguageSwitcher variant="mobile" className="!pt-0" />
             </div>
 
             {/* Navigation Links Grid */}
-            <nav className="grid sm:grid-cols-2 gap-1.5" aria-label="Navegação em ecrã inteiro">
+            <nav className="grid sm:grid-cols-2 gap-1.5" aria-label={t.nav.fullScreenNavigation}>
               {navLinks.map((link) => {
                 const isActive = location.pathname === link.path;
                 return (
@@ -278,11 +278,11 @@ export function Header() {
                 alt="WhatsApp" 
                 className="w-4.5 h-4.5" 
               />
-              Falar no WhatsApp (+245)
+              {t.homeContent.finalWhatsApp} (+245)
             </a>
 
             <div className="flex items-center justify-between pt-2 text-[11px] text-neutral-400">
-              <span>📍 Safim Centro / Reino · Bissau</span>
+              <span>📍 {t.nav.locationShort}</span>
               <Link 
                 to={isAuthenticated ? "/admin" : "/login"}
                 onClick={() => setIsOpen(false)}

@@ -10,7 +10,7 @@ Este é o website oficial do **EMDPN-GB** (Escritório de Movimentação de Docu
 - **Gestão de Documentos**: Modelos de formulários oficiais para descarga.
 - **Integração WhatsApp**: Contacto direto para consultoria.
 
-As transcrições e os modelos de documentos oficiais são apresentados no idioma do documento de origem para preservar a sua fidelidade. Os textos fixos da interface, os controlos e as instruções acompanham o idioma selecionado; publicações inseridas pelos administradores permanecem no idioma em que foram escritas.
+A transcrição informativa dos requisitos de nacionalidade acompanha o idioma selecionado (português, francês, inglês ou espanhol). O documento original e os modelos oficiais para apresentação às autoridades permanecem em português. Os textos da interface, os controlos e as instruções acompanham o idioma selecionado; publicações inseridas pelos administradores permanecem no idioma em que foram escritas.
 
 ## Tecnologias
 - **Frontend**: React 18, Vite, TypeScript

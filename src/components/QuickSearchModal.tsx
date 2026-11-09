@@ -19,8 +19,17 @@ export const QuickSearchModal: React.FC<QuickSearchModalProps> = ({ isOpen, onCl
     title: 'Pesquisa Rápida de Agendamento',
     placeholder: 'Digite o nº de protocolo ou telefone...',
     btnSearch: 'Procurar Agendamento',
+    portalLabel: 'EMDPN-GB · Portal Oficial',
+    searching: 'A consultar...',
+    connectionError: 'Não foi possível consultar o agendamento.',
     notFound: 'Nenhum agendamento encontrado. Verifique o número de protocolo ou o telefone informado.',
     resultsTitle: 'Resultados da Pesquisa:',
+    requestedService: 'Serviço Solicitado',
+    dateTime: 'Data & Horário',
+    confirmed: 'Confirmado',
+    pending: 'Pendente',
+    completed: 'Concluído',
+    canceled: 'Cancelado',
     close: 'Fechar',
     viewTracker: 'Ir para Consulta Completa'
   };
@@ -41,7 +50,7 @@ export const QuickSearchModal: React.FC<QuickSearchModalProps> = ({ isOpen, onCl
       setResults(found);
       setSearched(true);
     } catch (err) {
-      error(err instanceof Error ? err.message : 'Não foi possível consultar o agendamento.');
+      error(err instanceof Error ? err.message : qs.connectionError);
     } finally {
       setIsSearching(false);
     }
@@ -50,13 +59,13 @@ export const QuickSearchModal: React.FC<QuickSearchModalProps> = ({ isOpen, onCl
   const getStatusBadge = (status: Appointment['status']) => {
     switch (status) {
       case 'confirmado':
-        return <span className="bg-success-50 text-success-800 border border-success-200 px-2.5 py-1 rounded-full text-xs font-bold uppercase">Confirmado</span>;
+        return <span className="bg-success-50 text-success-800 border border-success-200 px-2.5 py-1 rounded-full text-xs font-bold uppercase">{qs.confirmed}</span>;
       case 'pendente':
-        return <span className="bg-amber-50 text-amber-800 border border-amber-200 px-2.5 py-1 rounded-full text-xs font-bold uppercase">Pendente</span>;
+        return <span className="bg-amber-50 text-amber-800 border border-amber-200 px-2.5 py-1 rounded-full text-xs font-bold uppercase">{qs.pending}</span>;
       case 'concluido':
-        return <span className="bg-primary-50 text-primary-800 border border-primary-200 px-2.5 py-1 rounded-full text-xs font-bold uppercase">Concluído</span>;
+        return <span className="bg-primary-50 text-primary-800 border border-primary-200 px-2.5 py-1 rounded-full text-xs font-bold uppercase">{qs.completed}</span>;
       case 'cancelado':
-        return <span className="bg-rose-50 text-rose-800 border border-rose-200 px-2.5 py-1 rounded-full text-xs font-bold uppercase">Cancelado</span>;
+        return <span className="bg-rose-50 text-rose-800 border border-rose-200 px-2.5 py-1 rounded-full text-xs font-bold uppercase">{qs.canceled}</span>;
       default:
         return <span className="bg-neutral-100 text-neutral-800 px-2.5 py-1 rounded-full text-xs font-bold uppercase">{status}</span>;
     }
@@ -77,7 +86,7 @@ export const QuickSearchModal: React.FC<QuickSearchModalProps> = ({ isOpen, onCl
               <Search size={20} />
             </div>
             <div>
-              <span className="text-[10px] font-bold text-accent-400 uppercase tracking-widest block">EMDPN-GB · Portal Oficial</span>
+              <span className="text-[10px] font-bold text-accent-400 uppercase tracking-widest block">{qs.portalLabel}</span>
               <h3 className="font-serif font-bold text-base sm:text-lg text-white">{qs.title}</h3>
             </div>
           </div>
@@ -110,7 +119,7 @@ export const QuickSearchModal: React.FC<QuickSearchModalProps> = ({ isOpen, onCl
                   disabled={isSearching}
                   className="btn btn-primary px-5 py-3.5 text-xs sm:text-sm font-bold shrink-0 shadow-md disabled:opacity-50"
                 >
-                  {isSearching ? 'A consultar...' : qs.btnSearch}
+                  {isSearching ? qs.searching : qs.btnSearch}
               </button>
             </div>
           </form>
@@ -133,11 +142,11 @@ export const QuickSearchModal: React.FC<QuickSearchModalProps> = ({ isOpen, onCl
 
                       <div className="grid sm:grid-cols-2 gap-3 text-xs sm:text-sm">
                         <div>
-                          <span className="text-neutral-400 block text-[11px] uppercase font-semibold">Serviço Solicitado</span>
+                          <span className="text-neutral-400 block text-[11px] uppercase font-semibold">{qs.requestedService}</span>
                           <span className="text-neutral-800 font-medium">{apt.serviceName}</span>
                         </div>
                         <div>
-                          <span className="text-neutral-400 block text-[11px] uppercase font-semibold">Data & Horário</span>
+                          <span className="text-neutral-400 block text-[11px] uppercase font-semibold">{qs.dateTime}</span>
                           <span className="text-neutral-800 flex items-center gap-1 font-mono">
                             <Calendar size={13} className="text-primary-700" /> {apt.date} às {apt.time}
                           </span>
